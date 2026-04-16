@@ -1,0 +1,23 @@
+name: Lint Branch Name
+
+on: [push]
+
+jobs:
+  lint-branch:
+    name: Validate branch name
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check branch name
+        run: |
+          BRANCH="${GITHUB_REF#refs/heads/}"
+          if [[ "$BRANCH" == "main" || "$BRANCH" == "dev" ]]; then
+            echo "Branch '$BRANCH' is allowed."
+            exit 0
+          fi
+          if [[ "$BRANCH" =~ ^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert|release)/.+ ]]; then
+            echo "Branch '$BRANCH' is valid."
+            exit 0
+          fi
+          echo "Branch name '$BRANCH' does not match required pattern <type>/<description>"
+          echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert, release"
+          exit 1
