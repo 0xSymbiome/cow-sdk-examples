@@ -1,0 +1,5 @@
+# Repository task aliases. Maintained guarantees are exposed as `cargo <verb>`
+# wrappers around the `xtask` crate rather than standalone shell scripts, so the
+# same command runs identically on every contributor platform and in CI.
+[alias]
+run-deterministic-examples = ["run", "--quiet", "-p", "xtask", "--", "run-deterministic-examples"]

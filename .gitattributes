@@ -1,0 +1,8 @@
+# Normalize line endings; force LF on files that must run on Linux CI runners.
+* text=auto eol=lf
+*.sh text eol=lf
+.githooks/* text eol=lf
+*.yml text eol=lf
+*.yaml text eol=lf
+*.toml text eol=lf
+*.rs text eol=lf

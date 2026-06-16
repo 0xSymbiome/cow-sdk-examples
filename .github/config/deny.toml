@@ -1,0 +1,52 @@
+[advisories]
+version = 2
+yanked = "deny"
+unmaintained = "all"
+unsound = "all"
+unused-ignored-advisory = "allow"
+# Reviewed advisory exceptions are recorded here as the canonical RustSec tolerance
+# register. CI derives the cargo-audit ignore arguments from this list so advisory
+# tolerances cannot drift between tools. Entries are added with a dated re-review note
+# only when a transitive advisory becomes reachable through a published dependency.
+ignore = []
+
+[bans]
+multiple-versions = "warn"
+wildcards = "deny"
+allow-wildcard-paths = true
+highlight = "all"
+
+[licenses]
+version = 2
+confidence-threshold = 0.8
+private = { ignore = true }
+unused-allowed-license = "warn"
+
+allow = [
+  "Apache-2.0",
+  "Apache-2.0 WITH LLVM-exception",
+  "BSD-2-Clause",
+  "BSD-3-Clause",
+  "CDLA-Permissive-2.0",
+  "ISC",
+  "GPL-3.0-or-later",
+  "LicenseRef-rustls-webpki",
+  "MIT",
+  "MIT-0",
+  "Unicode-3.0",
+  "Unlicense",
+  "Zlib",
+]
+
+exceptions = []
+
+[[licenses.clarify]]
+name = "rustls-webpki"
+version = "*"
+expression = "LicenseRef-rustls-webpki"
+license-files = [{ path = "LICENSE", hash = 0x001c7e6c }]
+
+[sources]
+unknown-registry = "deny"
+unknown-git = "deny"
+allow-git = []

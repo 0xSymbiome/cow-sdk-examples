@@ -1,0 +1,61 @@
+name: commit-format
+
+on:
+  pull_request:
+    types: [opened, synchronize, reopened, edited]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  validate:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      # Source ref: actions/checkout@v4
+      - uses: actions/checkout@34e114876b0b11c390a56381ad16ebd13914f8d5
+        with:
+          # Full history of the PR head SHA; the base SHA is an ancestor by
+          # construction, so the validator references it directly without a
+          # follow-up fetch (which would fail under persist-credentials: false).
+          fetch-depth: 0
+          persist-credentials: false
+          ref: ${{ github.event.pull_request.head.sha }}
+
+      - name: Validate commit messages
+        shell: bash
+        run: |
+          set -euo pipefail
+          base="${{ github.event.pull_request.base.sha }}"
+          head="${{ github.event.pull_request.head.sha }}"
+          failures=0
+
+          mapfile -t shas < <(git rev-list --reverse "${base}..${head}")
+
+          for sha in "${shas[@]}"; do
+            parents="$(git rev-list --parents -n 1 "$sha")"
+            if [ "$(printf '%s\n' "$parents" | awk '{ print NF }')" -gt 2 ]; then
+              continue
+            fi
+
+            message_file="$(mktemp)"
+            git show -s --format=%B "$sha" >"$message_file"
+
+            if ! ./.githooks/commit-msg "$message_file"; then
+              echo "::error::invalid commit message in ${sha:0:12}"
+              failures=1
+            fi
+
+            rm -f "$message_file"
+          done
+
+          if [ "$failures" -ne 0 ]; then
+            exit 1
+          fi

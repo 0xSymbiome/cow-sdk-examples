@@ -1,0 +1,47 @@
+[workspace]
+members = ["xtask"]
+# Example crates join here as they land. The WASM/TS projects under examples/wasm/*
+# are standalone (own toolchains and lockfiles) and stay excluded from this workspace.
+exclude = ["examples/wasm"]
+resolver = "3"
+
+[workspace.package]
+authors = ["0xSymbiome"]
+edition = "2024"
+license = "GPL-3.0-or-later"
+repository = "https://github.com/0xSymbiome/cow-sdk-examples"
+rust-version = "1.94.0"
+version = "0.1.0"
+
+[workspace.lints.rust]
+rust_2018_idioms = { level = "deny", priority = -1 }
+unsafe_code = "deny"
+unused_must_use = "deny"
+
+[workspace.lints.rustdoc]
+all = "warn"
+broken_intra_doc_links = "deny"
+
+[workspace.lints.clippy]
+# Enable the pedantic and nursery groups as broad warn-level review expectations.
+# Priority = -1 lets any individually-denied lint below still override the group.
+pedantic = { level = "warn", priority = -1 }
+nursery = { level = "warn", priority = -1 }
+# Every `#[allow]`/`#[expect]` must carry an explicit `reason = "..."`.
+allow_attributes_without_reason = "warn"
+# async_trait(?Send) is the deliberate bridge shape for wasm-bound async surfaces.
+future_not_send = "allow"
+missing_errors_doc = "warn"
+missing_panics_doc = "warn"
+must_use_candidate = "warn"
+unreadable_literal = "warn"
+
+[workspace.dependencies]
+# The published CoW SDK, pinned exactly during the alpha window for reproducibility.
+# Consumed by the example crates added alongside the first scenarios.
+cow-sdk = "=0.1.0-alpha.1"
+# Example-support dependencies, version-matched to the SDK workspace.
+serde = { version = "1.0.228", features = ["derive"] }
+serde_json = "1.0.149"
+tokio = { version = "1.52.2", default-features = false }
+wiremock = "0.6.5"

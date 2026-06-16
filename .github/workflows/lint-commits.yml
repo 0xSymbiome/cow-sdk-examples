@@ -14,14 +14,15 @@ jobs:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         with:
           types: |
-            feat
-            fix
-            docs
-            style
-            refactor
-            perf
-            test
+            build
             chore
             ci
-            build
+            docs
+            feat
+            fix
+            perf
+            quality
+            refactor
             revert
+            style
+            test

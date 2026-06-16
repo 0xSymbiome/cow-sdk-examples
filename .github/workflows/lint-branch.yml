@@ -14,10 +14,10 @@ jobs:
             echo "Branch '$BRANCH' is allowed."
             exit 0
           fi
-          if [[ "$BRANCH" =~ ^(feat|fix|docs|style|refactor|perf|test|chore|ci|build|revert|release)/.+ ]]; then
+          if [[ "$BRANCH" =~ ^(build|chore|ci|docs|feat|fix|perf|quality|refactor|revert|style|test|release)/.+ ]]; then
             echo "Branch '$BRANCH' is valid."
             exit 0
           fi
           echo "Branch name '$BRANCH' does not match required pattern <type>/<description>"
-          echo "Valid types: feat, fix, docs, style, refactor, perf, test, chore, ci, build, revert, release"
+          echo "Valid types: build, chore, ci, docs, feat, fix, perf, quality, refactor, revert, style, test, release"
           exit 1

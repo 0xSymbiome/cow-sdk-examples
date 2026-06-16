@@ -1,0 +1,6 @@
+# Pinned contributor toolchain for reproducible local execution and primary CI jobs.
+# The public compatibility floor is declared in the workspace Cargo.toml and validated separately in CI.
+[toolchain]
+channel = "1.94.1"
+components = ["clippy", "rustfmt"]
+profile = "minimal"

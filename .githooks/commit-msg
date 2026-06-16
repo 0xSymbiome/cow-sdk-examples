@@ -1,0 +1,35 @@
+#!/bin/sh
+set -eu
+
+message_file="$1"
+subject="$(sed -n '1p' "$message_file" | tr -d '\r')"
+subject_re='^(build|chore|ci|docs|feat|fix|perf|quality|refactor|revert|style|test)(\([a-z0-9][a-z0-9-]*\))?!?: [a-z0-9].*[^.[:space:]]$'
+
+errors=""
+
+if ! printf '%s\n' "$subject" | grep -Eq "$subject_re"; then
+  errors="${errors}  - subject must match '<type>(<scope>): <imperative summary>' in lowercase conventional-commit style\n"
+fi
+
+body_non_empty_count="$(
+  tail -n +2 "$message_file" \
+    | tr -d '\r' \
+    | sed '/^#/d' \
+    | grep -cve '^[[:space:]]*$' || true
+)"
+
+if [ "$body_non_empty_count" -eq 0 ]; then
+  errors="${errors}  - body must contain at least one bullet line\n"
+elif ! tail -n +2 "$message_file" \
+  | tr -d '\r' \
+  | sed '/^#/d' \
+  | awk 'NF && $0 !~ /^- / { exit 1 }'; then
+  errors="${errors}  - every non-empty body line must start with '- '\n"
+fi
+
+if [ -n "$errors" ]; then
+  printf 'Commit format validation failed:\n' >&2
+  printf '%s\n' "${subject:-<empty subject>}" >&2
+  printf '%b' "$errors" >&2
+  exit 1
+fi
