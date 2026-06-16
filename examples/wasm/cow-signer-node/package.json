@@ -1,0 +1,22 @@
+{
+  "name": "cow-sdk-wasm-example-signer-node",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "tsc --noEmit",
+    "test": "pnpm run build && vitest run"
+  },
+  "dependencies": {
+    "@symbiome-forge/cow-sdk-wasm": "0.1.0-alpha.1",
+    "viem": "2.52.2"
+  },
+  "devDependencies": {
+    "@types/node": "25.9.1",
+    "typescript": "6.0.3",
+    "vitest": "4.1.8"
+  }
+}

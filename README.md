@@ -28,7 +28,7 @@ for what is currently available.
 ```text
 examples/
   native/   # Rust scenarios — facade-only, runnable, mock/wiremock-driven by default
-  wasm/     # standalone browser (Dioxus), Node, and Cloudflare Worker projects
+  wasm/     # standalone Node and Cloudflare Worker projects
 xtask/      # repository task runner (e.g. cargo run-deterministic-examples)
 ```
 

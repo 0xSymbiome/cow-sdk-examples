@@ -1,0 +1,2 @@
+minimumReleaseAgeExclude:
+  - '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.1'

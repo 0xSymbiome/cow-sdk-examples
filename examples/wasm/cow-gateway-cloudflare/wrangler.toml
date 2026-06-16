@@ -1,0 +1,9 @@
+name = "cow-sdk-wasm-gateway-cloudflare-example"
+main = "dist-worker/worker.js"
+compatibility_date = "2026-05-09"
+find_additional_modules = true
+
+[[rules]]
+type = "CompiledWasm"
+globs = ["dist-worker/*.wasm"]
+fallthrough = true

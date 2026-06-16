@@ -18,15 +18,13 @@ _Scenarios are being published; this section lists each as it lands._
 ## WASM / TypeScript
 
 Standalone projects under [`wasm/`](wasm), each depending on the published
-`@symbiome-forge/cow-sdk-wasm` package and one of its flavor subpaths:
+`@symbiome-forge/cow-sdk-wasm` package and one of its flavor subpaths. Each project
+carries its own README with build and run instructions.
 
-- **Browser (Rust → WASM):** a wallet-driven trade flow.
-- **Node:** offline signing and orderbook flows.
-- **Cloudflare Worker:** an edge orderbook gateway.
-
-Each project carries its own README with build and run instructions.
-
-_Projects are being published; this section lists each as it lands._
+| Project | Runtime | Surface | Demonstrates |
+| --- | --- | --- | --- |
+| [`cow-signer-node`](wasm/cow-signer-node) | Node.js ≥ 22 | npm `/signing` | offline, deterministic EIP-712 + EIP-1271 order signing through a viem callback |
+| [`cow-gateway-cloudflare`](wasm/cow-gateway-cloudflare) | Cloudflare Worker | npm `/cloudflare` | an edge orderbook quote gateway with structured upstream error mapping (`503` + `Retry-After` / `502` / `400`) |
 
 ## Advanced cookbook
 

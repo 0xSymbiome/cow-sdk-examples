@@ -1,0 +1,26 @@
+{
+  "name": "cow-sdk-wasm-example-gateway-cloudflare",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=22.0.0"
+  },
+  "scripts": {
+    "build": "node scripts/build.mjs && wrangler deploy --dry-run --outdir dist-worker-upload",
+    "test": "tsc --noEmit && pnpm run build && vitest run --config vitest.config.ts"
+  },
+  "dependencies": {
+    "@symbiome-forge/cow-sdk-wasm": "0.1.0-alpha.1"
+  },
+  "devDependencies": {
+    "@cloudflare/vitest-pool-workers": "0.16.13",
+    "@cloudflare/workers-types": "4.20260604.1",
+    "@types/node": "25.9.1",
+    "@types/ws": "8.18.1",
+    "esbuild": "0.28.0",
+    "typescript": "6.0.3",
+    "vitest": "4.1.8",
+    "wrangler": "4.98.0"
+  }
+}
