@@ -1,5 +1,5 @@
 [workspace]
-members = ["xtask"]
+members = ["xtask", "examples/native/trading-bot"]
 # Example crates join here as they land. The WASM/TS projects under examples/wasm/*
 # are standalone (own toolchains and lockfiles) and stay excluded from this workspace.
 exclude = ["examples/wasm"]
@@ -45,3 +45,12 @@ serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
 tokio = { version = "1.52.2", default-features = false }
 wiremock = "0.6.5"
+# Native trading-bot example support. Alloy held at major `1`, default features
+# off, so cargo unifies them with the alloy stack the SDK itself pulls in.
+alloy-primitives = { version = "1", default-features = false }
+alloy-sol-types = { version = "1", default-features = false }
+chrono = { version = "0.4", default-features = false, features = ["clock", "serde"] }
+dotenvy = "0.15"
+thiserror = "2"
+tracing = "0.1"
+tracing-subscriber = { version = "0.3", features = ["env-filter", "fmt", "json"] }

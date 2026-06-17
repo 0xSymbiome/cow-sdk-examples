@@ -39,15 +39,19 @@ published npm package and one of its flavor subpaths (`/orderbook`, `/signing`,
 
 ## Running an example
 
-Rust scenarios run as Cargo examples:
+The advanced native cookbook is a live reference trading bot,
+[`examples/native/trading-bot`](examples/native/trading-bot):
 
 ```text
-cargo run -p cow-sdk-examples-native --example <scenario>
+cargo run -p cow-trading-bot -- inspect      # read-only health probe
+cargo run -p cow-trading-bot -- --help       # full command set
 ```
 
-Scenarios that exercise the native Alloy adapters enable the matching feature, e.g.
-`--features alloy`. WASM/TypeScript projects each carry their own README with build and
-run instructions.
+Single-call Rust scenarios run as Cargo examples (`cargo run -p
+cow-sdk-examples-native --example <scenario>`) as they are published; scenarios
+that exercise the native Alloy adapters enable the matching feature, e.g.
+`--features alloy`. WASM/TypeScript projects each carry their own README with
+build and run instructions.
 
 ## Toolchain
 

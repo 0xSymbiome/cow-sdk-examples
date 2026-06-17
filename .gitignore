@@ -13,6 +13,17 @@ playwright-report/
 .blob-report/
 test-results/
 
+# Local environment files (credentials) — never commit. The example template
+# `.env.example` is the one tracked exception.
+.env
+.env.*
+!.env.example
+
+# Bot runtime output (findings/telemetry/state are per-run, never committed)
+findings/
+telemetry/
+state/
+
 # Local tooling and working notes (not part of the published project)
 .local
 .agents

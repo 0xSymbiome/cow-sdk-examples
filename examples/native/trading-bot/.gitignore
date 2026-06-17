@@ -1,0 +1,12 @@
+# Build output
+/target
+
+# Per-run output — never committed
+/findings
+/telemetry
+/state
+
+# Local credentials — copy .env.example to .env and fill in
+.env
+.env.*
+!.env.example

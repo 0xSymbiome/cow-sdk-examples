@@ -5,7 +5,7 @@
 //! identically on every contributor platform and in CI.
 
 use std::path::Path;
-use std::process::ExitCode;
+use std::process::{Command, ExitCode};
 
 fn main() -> ExitCode {
     let mut args = std::env::args().skip(1);
@@ -31,17 +31,30 @@ fn usage() {
     );
 }
 
-// Runs the non-live example scenarios. Until the native scenario crate lands the
-// runner reports that there is nothing to run, keeping the corresponding CI lane
-// green on the repository foundation; the per-scenario logic is wired in
-// alongside the first scenarios.
+// Runs the deterministic (non-live) example tests. The native trading-bot's
+// suite is deterministic and offline; its live tests are `#[ignore]` and stay
+// out of this lane. If no example crate is present the runner is a green no-op,
+// keeping the CI lane stable on the repository foundation.
 fn run_deterministic_examples() -> ExitCode {
-    if Path::new("examples/native/Cargo.toml").exists() {
-        eprintln!(
-            "xtask: native scenario crate detected but the per-scenario runner is not wired yet"
-        );
-    } else {
+    const MANIFEST: &str = "examples/native/trading-bot/Cargo.toml";
+    if !Path::new(MANIFEST).exists() {
         println!("xtask: no example crates registered yet; nothing to run");
+        return ExitCode::SUCCESS;
     }
-    ExitCode::SUCCESS
+
+    println!("xtask: running cow-trading-bot deterministic tests");
+    match Command::new(env!("CARGO"))
+        .args(["test", "--manifest-path", MANIFEST, "--locked"])
+        .status()
+    {
+        Ok(status) if status.success() => ExitCode::SUCCESS,
+        Ok(status) => {
+            eprintln!("xtask: cow-trading-bot tests failed ({status})");
+            ExitCode::FAILURE
+        }
+        Err(error) => {
+            eprintln!("xtask: failed to launch cargo test: {error}");
+            ExitCode::FAILURE
+        }
+    }
 }

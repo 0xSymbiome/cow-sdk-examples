@@ -1,0 +1,4 @@
+# Brand and protocol names that are valid in documentation prose even though
+# their mixed case looks like a code identifier to `clippy::doc_markdown`.
+# `".."` extends (rather than replaces) clippy's built-in valid-ident list.
+doc-valid-idents = ["CoW", "CowSwap", ".."]

@@ -28,5 +28,9 @@ carries its own README with build and run instructions.
 
 ## Advanced cookbook
 
-Beyond single-call recipes, the cookbook will include advanced, multi-step bots for both the
-native and WASM runtimes, demonstrating end-to-end strategies built on the SDK surface.
+Beyond single-call recipes, the cookbook includes advanced, multi-step bots that
+demonstrate end-to-end strategies built on the SDK surface.
+
+| Project | Runtime | Demonstrates |
+| --- | --- | --- |
+| [`trading-bot`](native/trading-bot) | Native (Rust) | a live reference trading bot on the published `cow-sdk` crate — environment-driven config, structured `tracing` telemetry, cooperative cancellation, and typed error handling, with operator subcommands (`inspect`, and trading commands landing incrementally) |
