@@ -39,7 +39,7 @@ unreadable_literal = "warn"
 [workspace.dependencies]
 # The published CoW SDK, pinned exactly during the alpha window for reproducibility.
 # Consumed by the example crates added alongside the first scenarios.
-cow-sdk = "=0.1.0-alpha.1"
+cow-sdk = "=0.1.0-alpha.3"
 # Example-support dependencies, version-matched to the SDK workspace.
 serde = { version = "1.0.228", features = ["derive"] }
 serde_json = "1.0.149"
