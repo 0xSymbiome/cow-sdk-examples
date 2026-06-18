@@ -1,0 +1,117 @@
+# cow-swap-wasm — a complete CoW swap dApp, entirely client-side
+
+A hosted, browser-based CoW Protocol swap interface built on the **`trading`
+flavor** of the TypeScript-callable WASM package. It runs with **no backend**: the
+Rust SDK, compiled to WebAssembly, performs *all* protocol logic — quoting, order
+signing payloads, posting, tracking, surplus, solver competition, and cancellation
+— straight from the browser.
+
+The division of labor is the lesson. [viem](https://viem.sh) owns the wallet, RPC,
+and ABI plumbing; `@symbiome-forge/cow-sdk-wasm` owns the CoW Protocol. **No
+private key ever enters the SDK** — it builds the EIP-712 payload and the wallet
+signs it. There is no wrapper layer: the SDK is called directly inside feature
+hooks, so every call site reads like the package's own surface.
+
+This example imports the published package from its `/trading` subpath (the
+`bundler` target, consumed by Vite).
+
+## Run
+
+```text
+pnpm install
+pnpm dev      # start the dev server
+pnpm build    # type-check (tsc -b) and produce a static bundle in dist/
+pnpm test     # build, then run the Vitest suite
+```
+
+Open the dev server, connect an injected wallet (MetaMask, Rabby, Frame, …), and
+swap. **Sepolia** is supported for free end-to-end testing; mainnet and the other
+supported networks are live.
+
+## What it demonstrates
+
+| Capability | SDK surface |
+| --- | --- |
+| Live market quote with full cost breakdown | `TradingClient.getQuote` → `QuoteResultsDto` |
+| Sign + post a swap (gasless, wallet-signed) | `postSwapOrderFromQuote` + a typed-data callback |
+| Limit orders | `postLimitOrder` |
+| ERC-20 approval (read allowance, then approve) | `getCowProtocolAllowance` + `buildApprovalTx` |
+| Native-currency sells (on-chain eth-flow) | `buildSellNativeCurrencyTxFromQuote` |
+| Order tracking with live status | `OrderBookClient.getOrders` |
+| Surplus captured for you | `getTotalSurplus` |
+| Solver competition per order | `getOrderCompetitionStatus` |
+| Cancellation | `signCancellationWithTypedDataSigner` + `cancelOrders` |
+| Multi-chain network switcher | `supportedChainIds` |
+| Typed, specific error states | the thrown `CowError` taxonomy |
+| "Under the hood" inspector | `orderTypedData`, `wasmVersion` |
+
+Every row is exercised by code in `src/`; nothing here is illustrative-only.
+
+## How it maps to the SDK
+
+Feature hooks call the SDK directly. The only shared glue is the wallet/SDK seam —
+two small adapters in [`src/lib/cow-callbacks.ts`](src/lib/cow-callbacks.ts) that
+bridge viem to the SDK's typed-data and contract-read callbacks:
+
+```ts
+import type { TypedDataSignerCallback } from '@symbiome-forge/cow-sdk-wasm/trading'
+
+// The SDK hands the wallet a ready EIP-712 envelope; viem signs it and the key
+// stays in the wallet. (The real adapter also drops the redundant EIP712Domain
+// type that viem re-derives — see src/lib/cow-callbacks.ts.)
+const signer: TypedDataSignerCallback = (envelope) =>
+  walletClient.signTypedData({ account, ...envelope })
+
+const trading = new TradingClient({ chainId, appCode: 'cow-sdk-wasm-swap-demo' })
+const quote = (await trading.getQuote(swapParameters)).value
+const { orderId } = (await trading.postSwapOrderFromQuote(quote, owner, signer)).value
+```
+
+`getQuote` returns a fully resolved quote that `postSwapOrderFromQuote` re-uses, so
+the amounts the user confirms are the amounts that get signed — no second quote, no
+drift. `OrderBookClient` then tracks `orderId` to a terminal state and reports
+surplus and solver competition.
+
+## Notes
+
+- **Flavor.** The `trading` flavor is the order-lifecycle surface (quote, sign,
+  post, track, cancel) and the only flavor that also ships a `web`/edge target. A
+  browser dApp consumes its `bundler` target via the `/trading` subpath; Vite
+  instantiates the wasm module on import.
+- **Key handling.** Connect a real wallet. The SDK never holds key material; the
+  wallet signs every order and cancellation through a callback.
+- **Errors are states, not strings.** SDK failures throw a typed `CowError`
+  discriminated union; the app maps each variant (`walletRequest` 4001 →
+  soft-cancel, `orderbook` → its `category`/`retryable` verdict, …) to a specific
+  UI state — see [`src/lib/cow-errors.ts`](src/lib/cow-errors.ts).
+- **Scope.** Market and limit swaps, ERC-20 approvals, buying native currency, and
+  selling native currency (via CoW's on-chain eth-flow) are all supported. Advanced
+  order types (TWAP, hooks) are outside the current WASM surface and are
+  deliberately not shown rather than faked.
+- **Deployment.** `pnpm build` emits a static bundle in `dist/` with no server
+  component — host it on any static platform. `base: './'` keeps assets portable
+  across subpaths, and a `.nojekyll` file ships the hashed assets untouched, so it
+  deploys to GitHub Pages as-is; the single-threaded wasm needs no
+  cross-origin-isolation headers.
+- **Choosing this package.** For a standard production browser dapp where minimal
+  bundle size dominates, the upstream
+  [`@cowprotocol/cow-sdk`](https://www.npmjs.com/package/@cowprotocol/cow-sdk) is
+  the smaller, recommended choice. Reach for this package when you want a single
+  Rust implementation behind both your backend and frontend, or the exact same
+  engine on the browser and the edge.
+
+## Stack
+
+React 19 (with the React Compiler) + Vite + TypeScript + viem + TanStack Query.
+viem handles wallet discovery (EIP-6963), chain switching, balances, and the
+ABI-level reads the SDK delegates; the SDK handles everything CoW.
+
+## Quality
+
+The example is held to the same bar as the crates — every claim above is gated:
+
+```text
+pnpm run build   # tsc -b (0 type errors) + vite build
+pnpm test        # build, then the Vitest suite
+pnpm lint        # ESLint with the React Compiler rule set
+```

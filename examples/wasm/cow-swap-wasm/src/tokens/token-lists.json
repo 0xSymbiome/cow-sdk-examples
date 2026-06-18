@@ -1,0 +1,45 @@
+{
+  "1": [
+    "https://files.cow.fi/tokens/CowSwap.json",
+    "https://files.cow.fi/token-lists/CoinGecko.1.json"
+  ],
+  "100": [
+    "https://files.cow.fi/tokens/CowSwap.json",
+    "https://files.cow.fi/token-lists/Uniswap.100.json",
+    "https://files.cow.fi/token-lists/CoinGecko.100.json"
+  ],
+  "8453": [
+    "https://files.cow.fi/tokens/CowSwap.json",
+    "https://files.cow.fi/token-lists/Uniswap.8453.json",
+    "https://files.cow.fi/token-lists/CoinGecko.8453.json"
+  ],
+  "42161": [
+    "https://files.cow.fi/tokens/CowSwap.json",
+    "https://files.cow.fi/token-lists/Uniswap.42161.json",
+    "https://files.cow.fi/token-lists/CoinGecko.42161.json"
+  ],
+  "137": [
+    "https://files.cow.fi/tokens/CowSwap.json",
+    "https://files.cow.fi/token-lists/Uniswap.137.json",
+    "https://files.cow.fi/token-lists/CoinGecko.137.json"
+  ],
+  "56": [
+    "https://files.cow.fi/tokens/CowSwap.json",
+    "https://files.cow.fi/token-lists/Uniswap.56.json",
+    "https://files.cow.fi/token-lists/CoinGecko.56.json"
+  ],
+  "43114": [
+    "https://files.cow.fi/tokens/CowSwap.json",
+    "https://files.cow.fi/token-lists/Uniswap.43114.json",
+    "https://files.cow.fi/token-lists/CoinGecko.43114.json"
+  ],
+  "59144": [
+    "https://files.cow.fi/tokens/CowSwap.json",
+    "https://files.cow.fi/token-lists/CoinGecko.59144.json"
+  ],
+  "57073": [
+    "https://files.cow.fi/tokens/CowSwap.json",
+    "https://files.cow.fi/token-lists/CoinGecko.57073.json"
+  ],
+  "11155111": ["https://files.cow.fi/token-lists/CowSwapSepolia.json"]
+}

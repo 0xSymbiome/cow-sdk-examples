@@ -1,0 +1,16 @@
+// Public application identifier attached to every order for solver attribution.
+// App codes are public order metadata, never a secret.
+export const APP_CODE = 'cow-sdk-wasm-swap-demo'
+
+// Default slippage applied to market swaps unless the user overrides it.
+export const DEFAULT_SLIPPAGE_BPS = 50
+
+// How often open orders are re-polled while the activity panel is mounted.
+export const ORDER_POLL_INTERVAL_MS = 4_000
+
+// How long a freshly fetched quote is treated as valid in the UI before it is
+// re-requested. The orderbook also returns an absolute expiry we display.
+export const QUOTE_REFRESH_INTERVAL_MS = 20_000
+
+// CoW Explorer base; order pages live at `{base}/{network}/orders/{uid}`.
+export const COW_EXPLORER_BASE = 'https://explorer.cow.fi'
