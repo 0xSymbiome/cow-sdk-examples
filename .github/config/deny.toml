@@ -8,7 +8,14 @@ unused-ignored-advisory = "allow"
 # register. CI derives the cargo-audit ignore arguments from this list so advisory
 # tolerances cannot drift between tools. Entries are added with a dated re-review note
 # only when a transitive advisory becomes reachable through a published dependency.
-ignore = []
+ignore = [
+  # 2026-06-18: transitive, unmaintained-only advisories (no known vulnerability),
+  # reachable through the published cow-sdk / alloy proc-macro dependency tree.
+  # Re-review when the upstream graph drops them (unused-ignored-advisory = "allow"
+  # keeps this list from erroring if that happens).
+  "RUSTSEC-2024-0436", # paste — no longer maintained (pulled in via the alloy stack)
+  "RUSTSEC-2026-0173", # proc-macro-error2 — unmaintained (transitive macro dep)
+]
 
 [bans]
 multiple-versions = "warn"
