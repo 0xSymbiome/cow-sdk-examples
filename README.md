@@ -2,67 +2,88 @@
 
 [![ci](https://github.com/0xSymbiome/cow-sdk-examples/actions/workflows/ci.yml/badge.svg)](https://github.com/0xSymbiome/cow-sdk-examples/actions/workflows/ci.yml) [![License GPL-3.0-or-later](https://img.shields.io/badge/license-GPL--3.0--or--later-1F6FEB)](LICENSE)
 
-Runnable examples and an advanced cookbook for the CoW Protocol Rust SDK,
-covering both native Rust and browser/Node/Workers (WASM) runtimes.
+Reference-grade, runnable examples for the [CoW Protocol](https://cow.fi) Rust SDK
+— across native Rust and the JavaScript/TypeScript WebAssembly bindings. Each one
+is a study in **how to build correctly** on the SDK, not just *that it works*.
 
-Every example builds against the **published** SDK artifacts — nothing here depends
-on the SDK source tree:
+Three rules hold for everything in this repository, and CI enforces them — so what
+you read is what you get:
 
-- Rust: [`cow-sdk`](https://crates.io/crates/cow-sdk) · docs at [docs.rs/cow-sdk](https://docs.rs/cow-sdk)
-- TypeScript/WASM: [`@symbiome-forge/cow-sdk-wasm`](https://www.npmjs.com/package/@symbiome-forge/cow-sdk-wasm)
+- **Published artifacts only.** Every example depends on the released package,
+  [`cow-sdk`](https://crates.io/crates/cow-sdk) from crates.io or
+  [`@symbiome-forge/cow-sdk-wasm`](https://www.npmjs.com/package/@symbiome-forge/cow-sdk-wasm)
+  from npm, pinned with a committed lockfile. Nothing imports the SDK source tree,
+  so an example is exactly what a consumer gets — never a privileged build.
+- **Every claim is runnable.** Each example carries its own typecheck/build/test
+  gate and must pass it; a README never describes behavior the code doesn't have.
+- **The host owns its keys.** The WASM examples connect a real wallet and sign
+  through callbacks. No private key enters the SDK — in any example, on any path.
 
 ```text
 cargo add cow-sdk
 npm install @symbiome-forge/cow-sdk-wasm@alpha
 ```
 
-## Status
+## The catalog
 
-The repository foundation is in place — workspace, pinned toolchain, lint posture,
-dependency policy, and the CI quality gate — aligned with the SDK's own conventions.
-The example catalog is published incrementally; see [`examples/`](examples/README.md)
-for what is currently available.
+Grouped by runtime; each example carries its own README. The full index with run
+instructions is in [`examples/`](examples/README.md).
+
+| Example | Runtime | Depends on | Demonstrates |
+| --- | --- | --- | --- |
+| [`cow-swap-wasm`](examples/wasm/cow-swap-wasm) | Browser (Vite + React) | npm `…/trading` | **Flagship** — a complete client-side swap dApp: the full order lifecycle (quote → sign → post → track → surplus → cancel) with no backend |
+| [`cow-signer-node`](examples/wasm/cow-signer-node) | Node.js ≥ 22 | npm `…/signing` | Offline, deterministic EIP-712 + EIP-1271 order signing through a viem callback |
+| [`cow-gateway-cloudflare`](examples/wasm/cow-gateway-cloudflare) | Cloudflare Worker | npm `…/trading/edge` | An edge orderbook quote gateway with typed upstream error mapping |
+| [`trading-bot`](examples/native/trading-bot) | Native (Rust) | `cow-sdk` | A live reference trading bot: env-driven config, `tracing` telemetry, cooperative cancellation, typed errors |
+
+The flagship is **[`cow-swap-wasm`](examples/wasm/cow-swap-wasm)** — a hosted,
+fully client-side CoW swap interface where [viem](https://viem.sh) owns the
+wallet, RPC, and ABI plumbing and the SDK owns *every line* of protocol logic.
+
+## How these examples are built
+
+The discipline is the demonstration. Each example:
+
+- pins the published SDK exactly and commits its lockfile, so builds are
+  reproducible and the example can never silently track unreleased behavior;
+- passes its own gate — `pnpm test` (a `tsc` typecheck plus the Vitest suite) for
+  the TypeScript projects, `cargo` build/run for Rust — wired into CI;
+- carries no internal-lifecycle references, machine paths, or real keys; only
+  clearly-labelled public dev/test material;
+- is registered in the [catalog](examples/README.md), so an undocumented example
+  fails the repository's coherence check.
+
+This mirrors the SDK's own posture — correctness enforced by the build, not
+trusted to prose. See the SDK's
+[principles](https://github.com/0xSymbiome/cow-rs/blob/main/docs/principles.md).
 
 ## Layout
 
 ```text
 examples/
-  native/   # Rust scenarios — facade-only, runnable, mock/wiremock-driven by default
-  wasm/     # standalone Node and Cloudflare Worker projects
+  native/   # Rust — the reference trading bot (facade-only; more scenarios as they land)
+  wasm/     # standalone browser, Node, and Cloudflare Worker projects (own lockfiles)
 xtask/      # repository task runner (e.g. cargo run-deterministic-examples)
 ```
 
-Native scenarios are facade-only: they import the `cow-sdk` facade (and its in-crate
-test doubles), never individual leaf crates. WASM/TypeScript projects depend on the
-published npm package and one of its flavor subpaths (`/orderbook`, `/signing`,
-`/cloudflare`).
-
-## Running an example
-
-The advanced native cookbook is a live reference trading bot,
-[`examples/native/trading-bot`](examples/native/trading-bot):
-
-```text
-cargo run -p cow-trading-bot -- inspect      # read-only health probe
-cargo run -p cow-trading-bot -- --help       # full command set
-```
-
-Single-call Rust scenarios run as Cargo examples (`cargo run -p
-cow-sdk-examples-native --example <scenario>`) as they are published; scenarios
-that exercise the native Alloy adapters enable the matching feature, e.g.
-`--features alloy`. WASM/TypeScript projects each carry their own README with
-build and run instructions.
+The native trading bot is facade-only: it imports the `cow-sdk` facade (and its
+in-crate test doubles), never individual leaf crates. WASM/TypeScript projects
+depend on the published npm package and one of its flavor subpaths —
+`/trading` (with `/trading/edge` for Workers, Deno, and Vercel Edge),
+`/orderbook`, `/signing`, or the default — picking the smallest one their calls
+need.
 
 ## Toolchain
 
 - Rust edition `2024`, MSRV `1.94.0`, pinned contributor toolchain `1.94.1`
   (`rust-toolchain.toml`).
-- Node `>= 22` for the TypeScript/WASM projects.
+- Node `>= 22` and pnpm `11.7.0` for the TypeScript/WASM projects.
 
 ## Conventions
 
-Commits follow Conventional Commits (`type(scope): summary` with `- ` body bullets) and are
-validated by a local hook and the `commit-format` workflow. Enable the hook once after cloning:
+Commits follow Conventional Commits (`type(scope): summary` with `- ` body
+bullets), validated by a local hook and the `commit-format` workflow. Enable the
+hook once after cloning:
 
 ```text
 git config core.hooksPath .githooks

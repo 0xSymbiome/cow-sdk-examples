@@ -1,4 +1,4 @@
-import { access, copyFile, mkdir, rm } from "node:fs/promises";
+import { copyFile, mkdir, rm } from "node:fs/promises";
 import { dirname, join, resolve } from "node:path";
 import { fileURLToPath } from "node:url";
 
@@ -6,12 +6,12 @@ import { build } from "esbuild";
 
 // Why this pre-bundle step exists.
 //
-// The cloudflare flavor ships its wasm as a raw `.wasm` file behind the package
-// subpath `@symbiome-forge/cow-sdk-wasm/cloudflare/wasm`. `wrangler deploy` bundles a Worker
-// with esbuild, and esbuild has no loader for a `.wasm` reached through a *bare*
-// package specifier resolved into `node_modules` — it fails with "No loader is
-// configured for .wasm files". Wrangler's `CompiledWasm` module rule only attaches
-// to `.wasm` files that are *local* to the bundled entrypoint.
+// The trading flavor's edge target ships its wasm as a raw `.wasm` file behind the
+// package subpath `@symbiome-forge/cow-sdk-wasm/trading/edge/wasm`. `wrangler
+// deploy` bundles a Worker with esbuild, and esbuild has no loader for a `.wasm`
+// reached through a *bare* package specifier resolved into `node_modules` — it fails
+// with "No loader is configured for .wasm files". Wrangler's `CompiledWasm` module
+// rule only attaches to `.wasm` files that are *local* to the bundled entrypoint.
 //
 // So this script does exactly that: it copies the package's wasm next to the built
 // worker and rewrites the subpath import to a relative `./cow_sdk_wasm_bg.wasm`
@@ -25,22 +25,18 @@ import { build } from "esbuild";
 const root = resolve(dirname(fileURLToPath(import.meta.url)), "..");
 const outDir = join(root, "dist-worker");
 const wasmFile = "cow_sdk_wasm_bg.wasm";
-const wasmSource = join(
-  root,
-  "node_modules",
-  "@symbiome-forge",
-  "cow-sdk-wasm",
-  "dist",
-  "raw",
-  "cloudflare-web",
-  wasmFile
-);
+const wasmSpecifier = "@symbiome-forge/cow-sdk-wasm/trading/edge/wasm";
 
-await access(wasmSource).catch(() => {
+// Resolve the wasm through its public subpath export rather than reaching into the
+// package's `dist/` internals, so this keeps working across SDK releases.
+let wasmSource;
+try {
+  wasmSource = fileURLToPath(import.meta.resolve(wasmSpecifier));
+} catch {
   throw new Error(
-    "Missing Cloudflare WASM artifact. Run `pnpm install` before building this example."
+    `Missing edge WASM artifact (${wasmSpecifier}). Run \`pnpm install\` before building this example.`
   );
-});
+}
 
 await rm(outDir, { recursive: true, force: true });
 await mkdir(outDir, { recursive: true });
@@ -59,13 +55,13 @@ await build({
   target: "es2022",
   plugins: [
     {
-      name: "cow-sdk-wasm-cloudflare-module",
+      name: "cow-sdk-wasm-edge-module",
       setup(build) {
         build.onResolve(
-          { filter: /^@symbiome-forge\/cow-sdk-wasm\/cloudflare\/wasm$/ },
+          { filter: /^@symbiome-forge\/cow-sdk-wasm\/trading\/edge\/wasm$/ },
           () => ({
             namespace: "cow-sdk-wasm-module",
-            path: "cloudflare-wasm"
+            path: "edge-wasm"
           })
         );
 

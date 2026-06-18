@@ -4,12 +4,13 @@ import initialize, {
   type CowError,
   type HttpTransportConfig,
   type OrderQuoteRequestInput
-} from "@symbiome-forge/cow-sdk-wasm/cloudflare";
-import wasmModule from "@symbiome-forge/cow-sdk-wasm/cloudflare/wasm";
+} from "@symbiome-forge/cow-sdk-wasm/trading/edge";
+import wasmModule from "@symbiome-forge/cow-sdk-wasm/trading/edge/wasm";
 
 // A Cloudflare Worker that runs CoW order flow on Cloudflare's edge runtime: a
-// gateway in front of the CoW orderbook, built on the `cloudflare` flavor. The
-// Worker owns configuration (chain, environment, partner key) and can own egress.
+// gateway in front of the CoW orderbook, built on the `trading` flavor's edge
+// target. The Worker owns configuration (chain, environment, partner key) and can
+// own egress.
 
 export interface WorkerEnv {
   COW_CHAIN_ID?: string;
@@ -26,9 +27,10 @@ type EgressResponse = Awaited<ReturnType<CallbackTransport["callback"]>>;
 
 let ready: Promise<void> | undefined;
 
-// The cloudflare flavor is a `web`-target build initialized once per isolate from
-// the bundled wasm module. The build wires it as a Worker `CompiledWasm` binding,
-// so there is no dynamic wasm compilation or streaming instantiation at runtime.
+// The trading flavor's edge target is a `web`-target wasm build initialized once
+// per isolate from the bundled wasm module. The build wires it as a Worker
+// `CompiledWasm` binding, so there is no dynamic wasm compilation or streaming
+// instantiation at runtime.
 async function ensureReady(): Promise<void> {
   if (!ready) {
     ready = initialize(wasmModule);

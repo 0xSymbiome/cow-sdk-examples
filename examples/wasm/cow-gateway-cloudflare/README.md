@@ -1,17 +1,18 @@
-# Cloudflare Edge Gateway — Cloudflare-Flavor WASM Example
+# Cloudflare Edge Gateway — CoW order flow at the edge
 
 A Cloudflare Worker that runs CoW Protocol order flow on Cloudflare's edge
 runtime, acting as a gateway in front of the CoW orderbook. It is built on the
-**`cloudflare` flavor** of the TypeScript-callable WASM package, which targets the
-Cloudflare Workers `web` runtime.
+**`trading` flavor's edge target** of the TypeScript-callable WASM package — the
+edge-runtime build that initializes its wasm explicitly, with no top-level await,
+so it loads inside Workers, Deno, and Vercel Edge.
 
 This example imports the published `@symbiome-forge/cow-sdk-wasm` package from its
-`/cloudflare` subpath.
+`/trading/edge` subpath.
 
 For most browser dapps and CowSwap-style UIs the upstream
 [`@cowprotocol/cow-sdk`](https://www.npmjs.com/package/@cowprotocol/cow-sdk) is
-the recommended, substantially smaller choice. Reach for the cloudflare flavor
-when you are running order flow inside a Worker.
+the recommended, substantially smaller choice. Reach for the trading flavor's edge
+target when you are running order flow inside a Worker or another edge runtime.
 
 ## Run
 
@@ -37,12 +38,12 @@ and executes the tests in the Cloudflare runtime pool.
 
 ## How it maps to the SDK
 
-The cloudflare flavor is a `web`-target build initialized explicitly from a
-bundled wasm module — no dynamic compilation:
+The trading flavor's edge target is a `web`-target build initialized explicitly
+from a bundled wasm module — no dynamic compilation:
 
 ```ts
-import initialize, { OrderBookClient } from "@symbiome-forge/cow-sdk-wasm/cloudflare";
-import wasmModule from "@symbiome-forge/cow-sdk-wasm/cloudflare/wasm";
+import initialize, { OrderBookClient } from "@symbiome-forge/cow-sdk-wasm/trading/edge";
+import wasmModule from "@symbiome-forge/cow-sdk-wasm/trading/edge/wasm";
 
 await initialize(wasmModule); // once per isolate
 const client = new OrderBookClient({ chainId: 1, env: "prod", apiKey, transport: { kind: "fetch" } });
@@ -63,7 +64,7 @@ logs one structured line per outbound request and **still delegates to the platf
 ### Relaying upstream backoff
 
 The SDK retries transient orderbook failures internally; when it exhausts that
-budget it surfaces a typed `WasmError`. The `orderbook` variant carries
+budget it surfaces a typed `CowError`. The `orderbook` variant carries
 `retryable` and an optional `retryAfterMs` (parsed from the orderbook's
 `Retry-After` header), so the gateway can relay a retryable failure as a `503`
 with a `Retry-After` header instead of hiding it behind a generic `502`:
@@ -84,11 +85,12 @@ catch (error) {
 
 ## Bundle size
 
-The cloudflare flavor's gzip-compressed size is gated on every package release
-build against a conservative 3,000,000-byte budget that stays under Cloudflare's
-published 3 MB Free-plan compressed-size limit. `wrangler deploy --dry-run`
-reports the deployable bundle size for this Worker; full Workers support also
-requires Worker startup measurement against Cloudflare's 1-second startup limit.
+The trading flavor's edge-target gzip-compressed size is gated on every package
+release build against a conservative 3,000,000-byte budget that stays under
+Cloudflare's published 3 MB Free-plan compressed-size limit. `wrangler deploy
+--dry-run` reports the deployable bundle size for this Worker; full Workers support
+also requires Worker startup measurement against Cloudflare's 1-second startup
+limit.
 
 ## Quality
 
