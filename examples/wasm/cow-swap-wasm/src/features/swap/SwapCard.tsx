@@ -1,8 +1,9 @@
-import { useMemo, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { isAddress } from 'viem'
 
 import type { SwapParametersInput } from '@symbiome-forge/cow-sdk-wasm/trading'
 
+import { QUOTE_REFRESH_INTERVAL_MS } from '../../config'
 import { formatAmount, fromAtoms, isPositiveAmount, toAtoms } from '../../lib/format'
 import { toUiError } from '../../lib/cow-errors'
 import { isSupportedChain } from '../../chains/registry'
@@ -28,6 +29,19 @@ type Side = 'sell' | 'buy'
 
 function pickDefault(tokens: TokenInfo[], symbol: string): TokenInfo | undefined {
   return tokens.find((token) => token.symbol.toUpperCase() === symbol)
+}
+
+// Seconds until `targetMs`, recomputed each second; undefined when there is no
+// target. The value is derived during render from a `now` that the interval ticks.
+function useCountdownSeconds(targetMs: number | undefined): number | undefined {
+  const [now, setNow] = useState(() => Date.now())
+  useEffect(() => {
+    if (targetMs === undefined) return
+    const id = window.setInterval(() => setNow(Date.now()), 1000)
+    return () => window.clearInterval(id)
+  }, [targetMs])
+  if (targetMs === undefined) return undefined
+  return Math.max(0, Math.ceil((targetMs - now) / 1000))
 }
 
 export function SwapCard() {
@@ -174,6 +188,9 @@ export function SwapCard() {
 
   // What we show as the slippage: the manual value, or the SDK's Auto suggestion.
   const shownSlippageBps = slippageParam ?? quote.data?.suggestedSlippageBps
+  // The next auto-refresh time, for the countdown; paused while the review is open.
+  const refreshAt =
+    quote.dataUpdatedAt > 0 && !reviewing ? quote.dataUpdatedAt + QUOTE_REFRESH_INTERVAL_MS : undefined
 
   function flip() {
     setSellSel(buyToken)
@@ -316,7 +333,7 @@ export function SwapCard() {
           priceImpact={priceImpact}
           slippageBps={shownSlippageBps}
           slippageAuto={settings.slippage.mode === 'auto'}
-          expiration={quote.data.quoteResponse.expiration}
+          refreshAt={refreshAt}
         />
       ) : null}
 
@@ -464,7 +481,7 @@ interface QuoteSummaryProps {
   priceImpact: number | undefined
   slippageBps: number | undefined
   slippageAuto: boolean
-  expiration: string
+  refreshAt: number | undefined
 }
 
 function QuoteSummary({
@@ -476,8 +493,9 @@ function QuoteSummary({
   priceImpact,
   slippageBps,
   slippageAuto,
-  expiration,
+  refreshAt,
 }: QuoteSummaryProps) {
+  const refreshIn = useCountdownSeconds(refreshAt)
   return (
     <dl className="quote-summary">
       <div>
@@ -502,10 +520,12 @@ function QuoteSummary({
         <dt>Slippage tolerance{slippageAuto ? ' (auto)' : ''}</dt>
         <dd>{slippageBps !== undefined ? `${(slippageBps / 100).toFixed(2)}%` : '—'}</dd>
       </div>
-      <div>
-        <dt>Quote expires</dt>
-        <dd>{new Date(expiration).toLocaleTimeString()}</dd>
-      </div>
+      {refreshIn !== undefined ? (
+        <div>
+          <dt>Quote refreshes in</dt>
+          <dd>{refreshIn}s</dd>
+        </div>
+      ) : null}
     </dl>
   )
 }
