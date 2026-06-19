@@ -2,8 +2,8 @@
 
 A hosted, browser-based CoW Protocol swap interface built on the **`trading`
 flavor** of the TypeScript-callable WASM package. It runs with **no backend**: the
-Rust SDK, compiled to WebAssembly, performs *all* protocol logic — quoting, order
-signing payloads, posting, tracking, surplus, solver competition, and cancellation
+Rust SDK, compiled to WebAssembly, performs *all* protocol logic — quoting, slippage suggestion, order signing
+payloads, posting, tracking, surplus, solver competition, and cancellation
 — straight from the browser.
 
 The division of labor is the lesson. [viem](https://viem.sh) owns the wallet, RPC,
@@ -34,9 +34,12 @@ supported networks are live.
 | Capability | SDK surface |
 | --- | --- |
 | Live market quote with full cost breakdown | `TradingClient.getQuote` → `QuoteResultsDto` |
+| Auto or manual slippage | `QuoteResultsDto.suggestedSlippageBps` (Auto) / `SwapParametersInput.slippageBps` (manual) |
 | Sign + post a swap (gasless, wallet-signed) | `postSwapOrderFromQuote` + a typed-data callback |
-| Limit orders | `postLimitOrder` |
-| ERC-20 approval (read allowance, then approve) | `getCowProtocolAllowance` + `buildApprovalTx` |
+| Limit orders, optionally partially fillable | `postLimitOrder` (`partiallyFillable`) |
+| Custom recipient | `SwapParametersInput.receiver` |
+| Order expiry (swap minutes, limit days) | `validFor` |
+| ERC-20 approval — exact or unlimited allowance | `getCowProtocolAllowance` + `buildApprovalTx` |
 | Native-currency sells (on-chain eth-flow) | `buildSellNativeCurrencyTxFromQuote` |
 | Order tracking with live status | `OrderBookClient.getOrders` |
 | Surplus captured for you | `getTotalSurplus` |
@@ -80,6 +83,18 @@ surplus and solver competition.
   resolves the portable `web` target: the app calls `initialize()` once and the
   wasm loads as a normal asset, so it works across every bundler and on static
   hosting (the bundler-target `import * as wasm` integration is not portable there).
+- **Settings.** A gear-icon panel exposes the order controls, each mapped to a
+  field on the quote/order params: MEV-protected slippage (Auto follows the
+  protocol's per-quote `suggestedSlippageBps`, or set a manual percent), order
+  expiry (`validFor`), a custom recipient (`receiver`), the approval amount (exact
+  or unlimited), and — on limit orders — partial fills (`partiallyFillable`).
+  Nothing is mocked.
+- **MEV protection.** CoW settles orders in batch auctions off the public mempool,
+  so they are protected from MEV by construction; the app states this, with nothing
+  to toggle.
+- **Mobile.** The layout is responsive — single column, bottom-sheet modals, and
+  safe-area insets. Wallet connection uses EIP-6963 (covering a wallet's in-app
+  browser); on a plain mobile browser it offers in-app-browser deep-links.
 - **Key handling.** Connect a real wallet. The SDK never holds key material; the
   wallet signs every order and cancellation through a callback.
 - **Console output.** Browser wallet extensions inject a content script that logs

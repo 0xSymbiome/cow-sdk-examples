@@ -2,7 +2,6 @@ import { useState } from 'react'
 
 import type { QuoteResultsDto } from '@symbiome-forge/cow-sdk-wasm/trading'
 
-import { DEFAULT_SLIPPAGE_BPS } from '../../config'
 import { formatAmount, toAtoms } from '../../lib/format'
 import { toUiError } from '../../lib/cow-errors'
 import { Button } from '../../ui/primitives'
@@ -66,9 +65,9 @@ export function ReviewModal({
   // falls back to the default slippage; a market swap shows the SDK's suggestion.
   const manualBps = manualSlippageBps(settings)
   const receiver = resolvedReceiver(settings)
-  const validFor = validForSeconds(settings)
-  const limitSlippageBps = manualBps ?? DEFAULT_SLIPPAGE_BPS
-  const displaySlippageBps = mode === 'market' ? (manualBps ?? quote?.suggestedSlippageBps) : limitSlippageBps
+  const validFor = validForSeconds(settings, mode)
+  // A limit order's buy amount is the exact floor, so slippage applies to swaps only.
+  const displaySlippageBps = manualBps ?? quote?.suggestedSlippageBps
   const slippageAuto = mode === 'market' && settings.slippage.mode === 'auto'
 
   const buyDisplay =
@@ -118,7 +117,9 @@ export function ReviewModal({
           sellAmount: toAtoms(sellAmount, sellToken.decimals),
           buyAmount: toAtoms(limitBuyAmount, buyToken.decimals),
           validFor,
-          slippageBps: limitSlippageBps,
+          // The limit price is the exact floor — no slippage haircut (matches upstream).
+          slippageBps: 0,
+          partiallyFillable: settings.partialFills,
           ...(receiver !== undefined ? { receiver } : {}),
         },
         sellToken: sellToken.address,
@@ -171,14 +172,22 @@ export function ReviewModal({
               </dd>
             </div>
           ) : null}
-          <div>
-            <dt>Slippage tolerance{slippageAuto ? ' (auto)' : ''}</dt>
-            <dd>{displaySlippageBps !== undefined ? `${(displaySlippageBps / 100).toFixed(2)}%` : '—'}</dd>
-          </div>
+          {mode === 'market' ? (
+            <div>
+              <dt>Slippage tolerance{slippageAuto ? ' (auto)' : ''}</dt>
+              <dd>{displaySlippageBps !== undefined ? `${(displaySlippageBps / 100).toFixed(2)}%` : '—'}</dd>
+            </div>
+          ) : null}
           <div>
             <dt>Expires in</dt>
-            <dd>{Math.round(validFor / 60)} min</dd>
+            <dd>{mode === 'limit' ? `${Math.round(validFor / 86_400)} days` : `${Math.round(validFor / 60)} min`}</dd>
           </div>
+          {mode === 'limit' ? (
+            <div>
+              <dt>Partial fills</dt>
+              <dd>{settings.partialFills ? 'Allowed' : 'Fill or kill'}</dd>
+            </div>
+          ) : null}
           {receiver ? (
             <div>
               <dt>Recipient</dt>

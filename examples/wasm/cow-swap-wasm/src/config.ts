@@ -8,6 +8,9 @@ export const DEFAULT_SLIPPAGE_BPS = 50
 // Default order lifetime (minutes) before an unfilled order expires.
 export const DEFAULT_EXPIRY_MINUTES = 30
 
+// Default limit-order lifetime (days). Limit orders live far longer than swaps.
+export const DEFAULT_LIMIT_EXPIRY_DAYS = 7
+
 // How often orders are re-polled while one is still settling.
 export const ORDER_POLL_PENDING_MS = 4_000
 

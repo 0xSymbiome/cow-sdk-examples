@@ -93,7 +93,7 @@ export function SwapCard() {
   // recipient flow into every quote so the displayed amounts already reflect them.
   const slippageParam = manualSlippageBps(settings)
   const receiver = resolvedReceiver(settings)
-  const validFor = validForSeconds(settings)
+  const validFor = validForSeconds(settings, mode)
   const recipientIncomplete = recipientPending(settings)
 
   const swapParams: SwapParametersInput | null = useMemo(() => {
@@ -265,6 +265,7 @@ export function SwapCard() {
       <SwapSettingsPanel
         open={settingsOpen}
         onClose={() => setSettingsOpen(false)}
+        mode={mode}
         settings={settings}
         onChange={setSettings}
         suggestedSlippageBps={quote.data?.suggestedSlippageBps}
