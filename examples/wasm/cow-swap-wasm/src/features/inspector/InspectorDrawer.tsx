@@ -40,7 +40,17 @@ export function InspectorDrawer() {
         <aside className="inspector" aria-label="SDK inspector">
           <header className="inspector-head">
             <strong>Under the hood</strong>
-            <small>cow-sdk-wasm v{sdkVersion} · trading flavor</small>
+            <small>
+              <a
+                className="src-link"
+                href={`https://www.npmjs.com/package/@symbiome-forge/cow-sdk-wasm/v/${sdkVersion}`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                cow-sdk-wasm v{sdkVersion}
+              </a>
+              {' · trading flavor'}
+            </small>
           </header>
 
           {lastQuote ? (

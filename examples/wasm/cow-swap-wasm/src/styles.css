@@ -41,6 +41,18 @@ body {
   padding: 20px 18px 80px;
 }
 
+/* Inline source links (repo, npm): gold, underline on hover. */
+.src-link {
+  color: var(--accent);
+  text-decoration: none;
+  text-underline-offset: 3px;
+  transition: color 0.15s ease;
+}
+.src-link:hover {
+  color: var(--accent-strong);
+  text-decoration: underline;
+}
+
 /* Header */
 .app-header {
   display: flex;

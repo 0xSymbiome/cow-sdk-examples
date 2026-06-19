@@ -59,7 +59,17 @@ export function Header() {
         </span>
         <div>
           <strong>CoW Swap</strong>
-          <small>Rust SDK · WebAssembly</small>
+          <small>
+            <a
+              className="src-link"
+              href="https://github.com/0xSymbiome/cow-rs"
+              target="_blank"
+              rel="noreferrer"
+            >
+              Rust SDK
+            </a>
+            {' · WebAssembly'}
+          </small>
         </div>
       </div>
 
