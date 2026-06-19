@@ -1,5 +1,6 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 
+import { RenderBenchmark } from './features/benchmark/RenderBenchmark'
 import { InspectorDrawer } from './features/inspector/InspectorDrawer'
 import { OrdersPanel } from './features/orders/OrdersPanel'
 import { SwapCard } from './features/swap/SwapCard'
@@ -31,6 +32,7 @@ export function App() {
               </p>
             </footer>
             <InspectorDrawer />
+            <RenderBenchmark />
           </div>
         </ToastProvider>
       </WalletProvider>

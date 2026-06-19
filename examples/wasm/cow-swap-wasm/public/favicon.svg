@@ -1,21 +1,22 @@
 <svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
   <rect width="64" height="64" rx="15" fill="#0e1116" />
-  <!-- ears -->
-  <path d="M15 23 C8 19 7 28 13 31 C18 33 22 27 20 22 Z" fill="#e7e0d0" />
-  <path d="M49 23 C56 19 57 28 51 31 C46 33 42 27 44 22 Z" fill="#e7e0d0" />
-  <!-- horns -->
-  <path d="M23 16 C20 10 25 8 26 13" stroke="#c8a35a" stroke-width="3" fill="none" stroke-linecap="round" />
-  <path d="M41 16 C44 10 39 8 38 13" stroke="#c8a35a" stroke-width="3" fill="none" stroke-linecap="round" />
-  <!-- head -->
-  <path d="M18 26 C18 16 24 14 32 14 C40 14 46 16 46 26 L46 34 C46 46 40 51 32 51 C24 51 18 46 18 34 Z" fill="#f4efe4" />
-  <!-- forelock -->
-  <path d="M26 15 C28 20 36 20 38 15 C38 13 32 12 26 15 Z" fill="#d9cdb4" />
-  <!-- eyes -->
-  <circle cx="26" cy="29" r="3" fill="#23304a" />
-  <circle cx="38" cy="29" r="3" fill="#23304a" />
-  <!-- muzzle -->
-  <ellipse cx="32" cy="41" rx="12.5" ry="8.5" fill="#c8a35a" />
-  <!-- nostrils -->
-  <ellipse cx="27" cy="41" rx="1.9" ry="3.1" fill="#4a3a1f" />
-  <ellipse cx="37" cy="41" rx="1.9" ry="3.1" fill="#4a3a1f" />
+  <g transform="translate(8 10) scale(0.62)">
+    <ellipse cx="17" cy="33" rx="9.5" ry="6.5" fill="#efe6d8" transform="rotate(-26 17 33)" />
+    <ellipse cx="63" cy="33" rx="9.5" ry="6.5" fill="#efe6d8" transform="rotate(26 63 33)" />
+    <ellipse cx="16" cy="34" rx="4.3" ry="2.8" fill="#e0a99d" transform="rotate(-26 16 34)" />
+    <ellipse cx="64" cy="34" rx="4.3" ry="2.8" fill="#e0a99d" transform="rotate(26 64 34)" />
+    <path d="M30 18 q-5 -5 -3 -11 q5 3 5 9 z" fill="#d9b876" />
+    <path d="M50 18 q5 -5 3 -11 q-5 3 -5 9 z" fill="#d9b876" />
+    <ellipse cx="40" cy="41" rx="25" ry="22.5" fill="#f6efe4" />
+    <ellipse cx="29" cy="26" rx="10" ry="7" fill="#3a2f26" transform="rotate(-18 29 26)" />
+    <path d="M37 16 q3 -5 6 0 q-1.5 4 -3 4 q-1.5 0 -3 -4 z" fill="#3a2f26" />
+    <ellipse cx="40" cy="53" rx="15.5" ry="10.5" fill="#e7b8ac" />
+    <ellipse cx="34" cy="53" rx="2" ry="2.7" fill="#9c6f64" />
+    <ellipse cx="46" cy="53" rx="2" ry="2.7" fill="#9c6f64" />
+    <ellipse cx="31" cy="39" rx="3.3" ry="3.9" fill="#2a2118" />
+    <ellipse cx="49" cy="39" rx="3.3" ry="3.9" fill="#2a2118" />
+    <circle cx="32.1" cy="37.7" r="1.05" fill="#fff" />
+    <circle cx="50.1" cy="37.7" r="1.05" fill="#fff" />
+    <path d="M35 57 q5 3 10 0" stroke="#9c6f64" stroke-width="1.5" fill="none" stroke-linecap="round" />
+  </g>
 </svg>

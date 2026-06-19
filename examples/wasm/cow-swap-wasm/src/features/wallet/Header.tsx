@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react'
 
 import { chainMeta, explorerAddressUrl, supportedChains } from '../../chains/registry'
+import { Cow } from '../../ui/Cow'
 import { Button } from '../../ui/primitives'
 import { Modal } from '../../ui/Modal'
 import { useToast } from '../../ui/toast'
@@ -54,9 +55,7 @@ export function Header() {
   return (
     <header className="app-header">
       <div className="brand">
-        <span className="logo" aria-hidden="true">
-          🐄
-        </span>
+        <Cow size={32} className="brand-cow" />
         <div>
           <strong>CoW Swap</strong>
           <small>
@@ -155,7 +154,9 @@ export function Header() {
 
       <Modal open={picking} onClose={() => setPicking(false)} title="Connect a wallet">
         {providers.length === 0 ? (
-          isMobile ? (
+          <div className="empty-guide">
+            <Cow mood="happy" size={56} />
+            {isMobile ? (
             <div>
               <p className="muted">Open this page inside your wallet app&apos;s browser to connect:</p>
               <ul className="wallet-list">
@@ -177,7 +178,8 @@ export function Header() {
               No injected wallet found. Install MetaMask, Rabby, Frame, or another EIP-6963 wallet and
               reload.
             </p>
-          )
+            )}
+          </div>
         ) : (
           <ul className="wallet-list">
             {providers.map((detail) => (

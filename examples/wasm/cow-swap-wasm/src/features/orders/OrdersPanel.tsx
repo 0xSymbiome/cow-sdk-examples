@@ -6,6 +6,7 @@ import { chainMeta, cowExplorerOrderUrl } from '../../chains/registry'
 import { formatAmount } from '../../lib/format'
 import { toUiError } from '../../lib/cow-errors'
 import { useTokenList, type TokenInfo } from '../../tokens/tokens'
+import { Cow } from '../../ui/Cow'
 import { Badge, Button, Spinner } from '../../ui/primitives'
 import { Modal } from '../../ui/Modal'
 import { useToast } from '../../ui/toast'
@@ -69,7 +70,10 @@ export function OrdersPanel() {
     return (
       <section className="card orders-card">
         <h2>Activity</h2>
-        <p className="muted">Connect a wallet to see your orders, fills, and surplus.</p>
+        <div className="empty-guide">
+          <Cow mood="happy" size={64} blink />
+          <p className="muted">Connect a wallet to see your orders, fills, and surplus.</p>
+        </div>
       </section>
     )
   }
@@ -160,7 +164,12 @@ export function OrdersPanel() {
           ))}
         </ul>
       ) : (
-        <p className="muted">{tab === 'open' ? 'No open orders.' : 'No past orders yet.'}</p>
+        <div className="empty-guide">
+          <Cow mood={tab === 'open' ? 'thinking' : 'happy'} size={48} />
+          <p className="muted">
+            {tab === 'open' ? 'No open orders yet — your live trades will appear here.' : 'No past orders yet.'}
+          </p>
+        </div>
       )}
 
       {receipt ? (

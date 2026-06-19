@@ -1,5 +1,7 @@
 import { createContext, use, useCallback, useMemo, useState, type ReactNode } from 'react'
 
+import { Cow, type CowMood } from './Cow'
+
 export interface Toast {
   id: number
   title: string
@@ -11,6 +13,12 @@ interface ToastApi {
   toasts: Toast[]
   push: (toast: Omit<Toast, 'id'>) => void
   dismiss: (id: number) => void
+}
+
+const TONE_MOOD: Record<Toast['tone'], CowMood> = {
+  info: 'happy',
+  success: 'celebrating',
+  danger: 'worried',
 }
 
 const ToastContext = createContext<ToastApi | null>(null)
@@ -53,8 +61,11 @@ function ToastViewport() {
           className={`toast toast-${toast.tone}`}
           onClick={() => dismiss(toast.id)}
         >
-          <strong>{toast.title}</strong>
-          {toast.detail ? <span>{toast.detail}</span> : null}
+          <Cow mood={TONE_MOOD[toast.tone]} size={26} className="toast-cow" />
+          <span className="toast-text">
+            <strong>{toast.title}</strong>
+            {toast.detail ? <span className="toast-detail">{toast.detail}</span> : null}
+          </span>
         </button>
       ))}
     </div>
