@@ -15,6 +15,7 @@ import { getTradingClient } from '../../lib/cow'
 import { contractReader, typedDataSigner } from '../../lib/cow-callbacks'
 import { recordQuote } from '../inspector/store'
 import { useWallet } from '../../wallet/WalletProvider'
+import { MAX_UINT256, type ApprovalChoice } from './settings'
 
 export type TradeStep = 'idle' | 'approving' | 'signing' | 'submitting'
 
@@ -85,6 +86,7 @@ async function ensureApproved(
   account: Address,
   sellToken: string,
   sellAtoms: string,
+  approveAmount: string,
   setStep: (step: TradeStep) => void,
 ): Promise<void> {
   setStep('approving')
@@ -96,7 +98,7 @@ async function ensureApproved(
   ).value
   if (BigInt(allowance) >= BigInt(sellAtoms)) return
 
-  const tx = (await trading.buildApprovalTx({ tokenAddress: sellToken, amount: sellAtoms })).value
+  const tx = (await trading.buildApprovalTx({ tokenAddress: sellToken, amount: approveAmount })).value
   const to = tx.to as Address
   const data = (tx.data ?? '0x') as Hex
   const value = BigInt(tx.value ?? '0')
@@ -129,9 +131,9 @@ export function useTradeExecutor() {
   const market = useMutation<
     PostedOrder,
     Error,
-    { quote: QuoteResultsDto; sellToken: string; sellAtoms: string; native: boolean }
+    { quote: QuoteResultsDto; sellToken: string; sellAtoms: string; native: boolean; approval: ApprovalChoice }
   >({
-    mutationFn: async ({ quote, sellToken, sellAtoms, native }) => {
+    mutationFn: async ({ quote, sellToken, sellAtoms, native, approval }) => {
       if (!ready) throw new Error('Connect a wallet first')
       const trading = getTradingClient(chainId as number)
       const owner = account as Address
@@ -154,7 +156,16 @@ export function useTradeExecutor() {
           return { orderId: built.orderUid, txHash: hash }
         }
 
-        await ensureApproved(trading, publicClient as PublicClient, wallet, owner, sellToken, sellAtoms, setStep)
+        await ensureApproved(
+          trading,
+          publicClient as PublicClient,
+          wallet,
+          owner,
+          sellToken,
+          sellAtoms,
+          approval === 'unlimited' ? MAX_UINT256 : sellAtoms,
+          setStep,
+        )
         setStep('signing')
         const posted = (
           await trading.postSwapOrderFromQuote(quote, owner, typedDataSigner(wallet, owner))
@@ -167,12 +178,25 @@ export function useTradeExecutor() {
     onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['orders', chainId, account] }),
   })
 
-  const limit = useMutation<PostedOrder, Error, { params: LimitTradeParametersInput; sellToken: string }>({
-    mutationFn: async ({ params, sellToken }) => {
+  const limit = useMutation<
+    PostedOrder,
+    Error,
+    { params: LimitTradeParametersInput; sellToken: string; approval: ApprovalChoice }
+  >({
+    mutationFn: async ({ params, sellToken, approval }) => {
       if (!ready) throw new Error('Connect a wallet first')
       const trading = getTradingClient(chainId as number)
       try {
-        await ensureApproved(trading, publicClient as PublicClient, walletClient as WalletClient, account as Address, sellToken, params.sellAmount, setStep)
+        await ensureApproved(
+          trading,
+          publicClient as PublicClient,
+          walletClient as WalletClient,
+          account as Address,
+          sellToken,
+          params.sellAmount,
+          approval === 'unlimited' ? MAX_UINT256 : params.sellAmount,
+          setStep,
+        )
         setStep('signing')
         const posted = (
           await trading.postLimitOrder(

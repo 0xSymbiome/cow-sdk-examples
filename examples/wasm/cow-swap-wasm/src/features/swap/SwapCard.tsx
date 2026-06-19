@@ -1,8 +1,8 @@
 import { useMemo, useState } from 'react'
+import { isAddress } from 'viem'
 
 import type { SwapParametersInput } from '@symbiome-forge/cow-sdk-wasm/trading'
 
-import { DEFAULT_SLIPPAGE_BPS } from '../../config'
 import { formatAmount, fromAtoms, isPositiveAmount, toAtoms } from '../../lib/format'
 import { toUiError } from '../../lib/cow-errors'
 import { isSupportedChain } from '../../chains/registry'
@@ -11,6 +11,15 @@ import { Button } from '../../ui/primitives'
 import { TokenLogo } from '../../ui/TokenLogo'
 import { useWallet } from '../../wallet/WalletProvider'
 import { ReviewModal } from './ReviewModal'
+import {
+  DEFAULT_SETTINGS,
+  manualSlippageBps,
+  recipientPending,
+  resolvedReceiver,
+  validForSeconds,
+  type SwapSettings,
+} from './settings'
+import { SwapSettingsPanel } from './SwapSettings'
 import { TokenSelect } from './TokenSelect'
 import { useQuote } from './useSwap'
 
@@ -31,7 +40,8 @@ export function SwapCard() {
   const [buySel, setBuySel] = useState<TokenInfo>()
   const [sellAmount, setSellAmount] = useState('')
   const [limitBuyAmount, setLimitBuyAmount] = useState('')
-  const [slippageBps] = useState(DEFAULT_SLIPPAGE_BPS)
+  const [settings, setSettings] = useState<SwapSettings>(DEFAULT_SETTINGS)
+  const [settingsOpen, setSettingsOpen] = useState(false)
   const [picking, setPicking] = useState<Side>()
   const [reviewing, setReviewing] = useState(false)
 
@@ -78,6 +88,14 @@ export function SwapCard() {
 
   const wrongNetwork = chainId !== undefined && !isSupportedChain(chainId)
 
+  // Resolve the settings into order knobs once. Auto leaves `slippageBps` unset so
+  // the SDK applies (and reports) its own suggestion; the lifetime and any custom
+  // recipient flow into every quote so the displayed amounts already reflect them.
+  const slippageParam = manualSlippageBps(settings)
+  const receiver = resolvedReceiver(settings)
+  const validFor = validForSeconds(settings)
+  const recipientIncomplete = recipientPending(settings)
+
   const swapParams: SwapParametersInput | null = useMemo(() => {
     if (mode !== 'market' || !sellToken || !buyToken || account === undefined) return null
     if (!isPositiveAmount(sellAmount, sellToken.decimals)) return null
@@ -88,10 +106,12 @@ export function SwapCard() {
       sellToken: sellToken.address,
       buyToken: buyToken.address,
       amount: toAtoms(sellAmount, sellToken.decimals),
-      slippageBps,
+      validFor,
+      ...(slippageParam !== undefined ? { slippageBps: slippageParam } : {}),
+      ...(receiver !== undefined ? { receiver } : {}),
       owner: account,
     }
-  }, [mode, sellToken, buyToken, account, sellAmount, slippageBps])
+  }, [mode, sellToken, buyToken, account, sellAmount, validFor, slippageParam, receiver])
 
   // Pause quote polling while the review modal is open so the amounts cannot
   // change between the user reading them and signing.
@@ -103,6 +123,9 @@ export function SwapCard() {
         ? formatAmount(quote.data.amountsAndCosts.afterPartnerFees.buyAmount, buyToken.decimals)
         : ''
       : limitBuyAmount
+
+  // What we show as the slippage: the manual value, or the SDK's Auto suggestion.
+  const shownSlippageBps = slippageParam ?? quote.data?.suggestedSlippageBps
 
   function flip() {
     setSellSel(buyToken)
@@ -124,16 +147,30 @@ export function SwapCard() {
     mode === 'limit' && amountEntered && isPositiveAmount(limitBuyAmount, buyToken?.decimals ?? 18)
   const marketReady = mode === 'market' && Boolean(quote.data)
   const canReview =
-    account !== undefined && !wrongNetwork && !insufficientBalance && (marketReady || limitReady)
+    account !== undefined &&
+    !wrongNetwork &&
+    !insufficientBalance &&
+    !recipientIncomplete &&
+    (marketReady || limitReady)
 
   return (
     <section className="card swap-card">
-      <div className="tabs">
-        <button type="button" className={mode === 'market' ? 'tab tab-active' : 'tab'} onClick={() => setMode('market')}>
-          Swap
-        </button>
-        <button type="button" className={mode === 'limit' ? 'tab tab-active' : 'tab'} onClick={() => setMode('limit')}>
-          Limit
+      <div className="card-head">
+        <div className="tabs">
+          <button type="button" className={mode === 'market' ? 'tab tab-active' : 'tab'} onClick={() => setMode('market')}>
+            Swap
+          </button>
+          <button type="button" className={mode === 'limit' ? 'tab tab-active' : 'tab'} onClick={() => setMode('limit')}>
+            Limit
+          </button>
+        </div>
+        <button
+          type="button"
+          className="icon-btn settings-btn"
+          onClick={() => setSettingsOpen(true)}
+          aria-label="Swap settings"
+        >
+          ⚙
         </button>
       </div>
 
@@ -165,16 +202,32 @@ export function SwapCard() {
         onPick={() => setPicking('buy')}
       />
 
+      {settings.recipient.enabled ? (
+        <div className="recipient-field">
+          <span className="token-field-label">Recipient</span>
+          <input
+            className="recipient-input"
+            placeholder="0x… wallet address"
+            autoComplete="off"
+            spellCheck={false}
+            value={settings.recipient.address}
+            onChange={(event) =>
+              setSettings({ ...settings, recipient: { ...settings.recipient, address: event.target.value } })
+            }
+          />
+          {settings.recipient.address.trim() !== '' && !isAddress(settings.recipient.address.trim()) ? (
+            <p className="error-text">Enter a valid wallet address.</p>
+          ) : null}
+        </div>
+      ) : null}
+
       {mode === 'market' && quote.isError ? (
         <p className="error-text">{toUiError(quote.error).detail}</p>
       ) : null}
 
       {mode === 'market' && quote.data && sellToken && buyToken ? (
         <QuoteSummary
-          minReceived={formatAmount(
-            quote.data.amountsAndCosts.afterSlippage.buyAmount,
-            buyToken.decimals,
-          )}
+          minReceived={formatAmount(quote.data.amountsAndCosts.afterSlippage.buyAmount, buyToken.decimals)}
           buySymbol={buyToken.symbol}
           networkCost={formatAmount(
             quote.data.amountsAndCosts.costs.networkFee.amountInSellCurrency,
@@ -182,7 +235,8 @@ export function SwapCard() {
             6,
           )}
           sellSymbol={sellToken.symbol}
-          slippageBps={slippageBps}
+          slippageBps={shownSlippageBps}
+          slippageAuto={settings.slippage.mode === 'auto'}
           expiration={quote.data.quoteResponse.expiration}
         />
       ) : null}
@@ -201,10 +255,20 @@ export function SwapCard() {
               ? 'Enter an amount'
               : insufficientBalance
                 ? `Insufficient ${sellToken?.symbol ?? ''} balance`
-                : mode === 'market' && quote.isFetching && !quote.data
-                  ? 'Fetching quote…'
-                  : 'Review order'}
+                : recipientIncomplete
+                  ? 'Enter a valid recipient'
+                  : mode === 'market' && quote.isFetching && !quote.data
+                    ? 'Fetching quote…'
+                    : 'Review order'}
       </Button>
+
+      <SwapSettingsPanel
+        open={settingsOpen}
+        onClose={() => setSettingsOpen(false)}
+        settings={settings}
+        onChange={setSettings}
+        suggestedSlippageBps={quote.data?.suggestedSlippageBps}
+      />
 
       <TokenSelect
         open={picking !== undefined}
@@ -224,7 +288,7 @@ export function SwapCard() {
           buyToken={buyToken}
           sellAmount={sellAmount}
           limitBuyAmount={limitBuyAmount}
-          slippageBps={slippageBps}
+          settings={settings}
           quote={mode === 'market' ? quote.data : undefined}
           onClose={() => setReviewing(false)}
           onDone={() => {
@@ -312,7 +376,8 @@ interface QuoteSummaryProps {
   buySymbol: string
   networkCost: string
   sellSymbol: string
-  slippageBps: number
+  slippageBps: number | undefined
+  slippageAuto: boolean
   expiration: string
 }
 
@@ -322,6 +387,7 @@ function QuoteSummary({
   networkCost,
   sellSymbol,
   slippageBps,
+  slippageAuto,
   expiration,
 }: QuoteSummaryProps) {
   return (
@@ -339,8 +405,8 @@ function QuoteSummary({
         </dd>
       </div>
       <div>
-        <dt>Slippage tolerance</dt>
-        <dd>{(slippageBps / 100).toFixed(2)}%</dd>
+        <dt>Slippage tolerance{slippageAuto ? ' (auto)' : ''}</dt>
+        <dd>{slippageBps !== undefined ? `${(slippageBps / 100).toFixed(2)}%` : '—'}</dd>
       </div>
       <div>
         <dt>Quote expires</dt>

@@ -2,6 +2,7 @@ import { useState } from 'react'
 
 import type { QuoteResultsDto } from '@symbiome-forge/cow-sdk-wasm/trading'
 
+import { DEFAULT_SLIPPAGE_BPS } from '../../config'
 import { formatAmount, toAtoms } from '../../lib/format'
 import { toUiError } from '../../lib/cow-errors'
 import { Button } from '../../ui/primitives'
@@ -9,6 +10,7 @@ import { Modal } from '../../ui/Modal'
 import { TokenLogo } from '../../ui/TokenLogo'
 import { useToast } from '../../ui/toast'
 import type { TokenInfo } from '../../tokens/tokens'
+import { manualSlippageBps, resolvedReceiver, validForSeconds, type SwapSettings } from './settings'
 import { useNeedsApproval, useTradeExecutor, type TradeStep } from './useSwap'
 
 interface ReviewModalProps {
@@ -17,7 +19,7 @@ interface ReviewModalProps {
   buyToken: TokenInfo
   sellAmount: string
   limitBuyAmount: string
-  slippageBps: number
+  settings: SwapSettings
   quote: QuoteResultsDto | undefined
   onClose: () => void
   onDone: () => void
@@ -36,13 +38,17 @@ function stepLabel(step: TradeStep, sellSymbol: string): string {
   }
 }
 
+function shortAddress(address: string): string {
+  return `${address.slice(0, 6)}…${address.slice(-4)}`
+}
+
 export function ReviewModal({
   mode,
   sellToken,
   buyToken,
   sellAmount,
   limitBuyAmount,
-  slippageBps,
+  settings,
   quote: liveQuote,
   onClose,
   onDone,
@@ -55,6 +61,15 @@ export function ReviewModal({
   const needsApproval = useNeedsApproval(sellToken.address, sellAtoms, sellToken.native === true)
 
   const pending = step !== 'idle' || market.isPending || limit.isPending
+
+  // Resolve the settings once: a limit order has no quote to suggest from, so it
+  // falls back to the default slippage; a market swap shows the SDK's suggestion.
+  const manualBps = manualSlippageBps(settings)
+  const receiver = resolvedReceiver(settings)
+  const validFor = validForSeconds(settings)
+  const limitSlippageBps = manualBps ?? DEFAULT_SLIPPAGE_BPS
+  const displaySlippageBps = mode === 'market' ? (manualBps ?? quote?.suggestedSlippageBps) : limitSlippageBps
+  const slippageAuto = mode === 'market' && settings.slippage.mode === 'auto'
 
   const buyDisplay =
     mode === 'market' && quote
@@ -88,6 +103,7 @@ export function ReviewModal({
           sellToken: sellToken.address,
           sellAtoms,
           native: sellToken.native === true,
+          approval: settings.approval,
         },
         { onSuccess, onError },
       )
@@ -101,9 +117,12 @@ export function ReviewModal({
           buyToken: buyToken.address,
           sellAmount: toAtoms(sellAmount, sellToken.decimals),
           buyAmount: toAtoms(limitBuyAmount, buyToken.decimals),
-          slippageBps,
+          validFor,
+          slippageBps: limitSlippageBps,
+          ...(receiver !== undefined ? { receiver } : {}),
         },
         sellToken: sellToken.address,
+        approval: settings.approval,
       },
       { onSuccess, onError },
     )
@@ -153,9 +172,19 @@ export function ReviewModal({
             </div>
           ) : null}
           <div>
-            <dt>Slippage tolerance</dt>
-            <dd>{(slippageBps / 100).toFixed(2)}%</dd>
+            <dt>Slippage tolerance{slippageAuto ? ' (auto)' : ''}</dt>
+            <dd>{displaySlippageBps !== undefined ? `${(displaySlippageBps / 100).toFixed(2)}%` : '—'}</dd>
           </div>
+          <div>
+            <dt>Expires in</dt>
+            <dd>{Math.round(validFor / 60)} min</dd>
+          </div>
+          {receiver ? (
+            <div>
+              <dt>Recipient</dt>
+              <dd>{shortAddress(receiver)}</dd>
+            </div>
+          ) : null}
           {mode === 'market' && quote ? (
             <div>
               <dt>Quote id</dt>
@@ -166,8 +195,9 @@ export function ReviewModal({
 
         {!pending && needsApproval.data ? (
           <p className="notice">
-            First {sellToken.symbol} swap: you approve it once (an on-chain transaction), then sign
-            the order — which is gasless. Later {sellToken.symbol} swaps need only the signature.
+            {settings.approval === 'unlimited'
+              ? `First ${sellToken.symbol} swap: approve it once (an on-chain transaction), then sign the order — which is gasless. Later ${sellToken.symbol} swaps need only the signature.`
+              : `First, approve exactly this ${sellToken.symbol} amount (an on-chain transaction), then sign the order — which is gasless. Each new ${sellToken.symbol} swap re-approves.`}
           </p>
         ) : null}
 

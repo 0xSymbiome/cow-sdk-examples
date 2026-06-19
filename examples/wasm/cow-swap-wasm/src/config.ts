@@ -5,6 +5,9 @@ export const APP_CODE = 'cow-swap-wasm'
 // Default slippage applied to market swaps unless the user overrides it.
 export const DEFAULT_SLIPPAGE_BPS = 50
 
+// Default order lifetime (minutes) before an unfilled order expires.
+export const DEFAULT_EXPIRY_MINUTES = 30
+
 // How often orders are re-polled while one is still settling.
 export const ORDER_POLL_PENDING_MS = 4_000
 

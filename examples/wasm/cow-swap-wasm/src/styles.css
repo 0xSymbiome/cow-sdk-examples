@@ -188,10 +188,19 @@ body {
 }
 
 /* Tabs */
+.card-head {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  margin-bottom: 14px;
+}
 .tabs {
   display: flex;
   gap: 6px;
-  margin-bottom: 14px;
+}
+.settings-btn {
+  font-size: 18px;
+  line-height: 1;
 }
 .tab {
   background: transparent;
@@ -586,6 +595,155 @@ body {
   margin-top: 12px;
   font-size: 12px;
   color: var(--muted);
+}
+
+/* Swap settings */
+.settings {
+  display: grid;
+  gap: 20px;
+}
+.settings-group {
+  display: grid;
+  gap: 10px;
+}
+.settings-heading {
+  margin: 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.settings-note {
+  margin: 0;
+  font-size: 12px;
+  line-height: 1.5;
+  color: var(--muted);
+}
+.slippage-control {
+  display: flex;
+  gap: 8px;
+}
+.chip {
+  flex-shrink: 0;
+  display: inline-flex;
+  align-items: center;
+  height: 42px;
+  padding: 0 16px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  color: var(--muted);
+  font-size: 14px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
+}
+.chip-active {
+  color: var(--bg);
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.settings-input-wrap {
+  display: flex;
+  flex: 1;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  height: 42px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+}
+.settings-input {
+  flex: 1;
+  width: 0;
+  border: none;
+  background: transparent;
+  color: var(--text);
+  font-size: 16px;
+  text-align: right;
+  outline: none;
+}
+.settings-unit {
+  flex-shrink: 0;
+  color: var(--muted);
+  font-size: 14px;
+}
+.settings-row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  font-size: 14px;
+}
+.toggle {
+  flex-shrink: 0;
+  width: 44px;
+  height: 26px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+  cursor: pointer;
+  transition: background 0.15s ease, border-color 0.15s ease;
+}
+.toggle-knob {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  background: var(--muted);
+  transition: transform 0.15s ease, background 0.15s ease;
+}
+.toggle-on {
+  background: var(--accent);
+  border-color: var(--accent);
+}
+.toggle-on .toggle-knob {
+  background: var(--bg);
+  transform: translateX(18px);
+}
+.segmented {
+  display: flex;
+  gap: 4px;
+  padding: 3px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--surface-2);
+}
+.seg {
+  padding: 8px 18px;
+  border: none;
+  border-radius: 999px;
+  background: transparent;
+  color: var(--muted);
+  font-size: 13px;
+  font-weight: 600;
+  cursor: pointer;
+  transition: color 0.15s ease, background 0.15s ease;
+}
+.seg-active {
+  color: var(--bg);
+  background: var(--accent);
+}
+.recipient-field {
+  margin-top: 12px;
+  display: grid;
+  gap: 6px;
+}
+.recipient-input {
+  width: 100%;
+  height: 44px;
+  padding: 0 14px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  color: var(--text);
+  font-size: 16px;
+  font-family: inherit;
+  outline: none;
+}
+.recipient-input:focus {
+  border-color: var(--accent);
 }
 
 /* Orders */
