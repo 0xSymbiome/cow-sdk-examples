@@ -12,8 +12,9 @@ private key ever enters the SDK** — it builds the EIP-712 payload and the wall
 signs it. There is no wrapper layer: the SDK is called directly inside feature
 hooks, so every call site reads like the package's own surface.
 
-This example imports the published package from its `/trading` subpath (the
-`bundler` target, consumed by Vite).
+This example imports the published package from its `/trading` subpath; in the
+browser that resolves the `trading` flavor's `web` target, instantiated with a
+single `initialize()` call.
 
 ## Run
 
@@ -62,7 +63,7 @@ import type { TypedDataSignerCallback } from '@symbiome-forge/cow-sdk-wasm/tradi
 const signer: TypedDataSignerCallback = (envelope) =>
   walletClient.signTypedData({ account, ...envelope })
 
-const trading = new TradingClient({ chainId, appCode: 'cow-sdk-wasm-swap-demo' })
+const trading = new TradingClient({ chainId, appCode: 'cow-swap-wasm' })
 const quote = (await trading.getQuote(swapParameters)).value
 const { orderId } = (await trading.postSwapOrderFromQuote(quote, owner, signer)).value
 ```
@@ -75,9 +76,10 @@ surplus and solver competition.
 ## Notes
 
 - **Flavor.** The `trading` flavor is the order-lifecycle surface (quote, sign,
-  post, track, cancel) and the only flavor that also ships a `web`/edge target. A
-  browser dApp consumes its `bundler` target via the `/trading` subpath; Vite
-  instantiates the wasm module on import.
+  post, track, cancel). A browser dApp imports the `/trading` subpath, which
+  resolves the portable `web` target: the app calls `initialize()` once and the
+  wasm loads as a normal asset, so it works across every bundler and on static
+  hosting (the bundler-target `import * as wasm` integration is not portable there).
 - **Key handling.** Connect a real wallet. The SDK never holds key material; the
   wallet signs every order and cancellation through a callback.
 - **Errors are states, not strings.** SDK failures throw a typed `CowError`
@@ -89,10 +91,12 @@ surplus and solver competition.
   order types (TWAP, hooks) are outside the current WASM surface and are
   deliberately not shown rather than faked.
 - **Deployment.** `pnpm build` emits a static bundle in `dist/` with no server
-  component — host it on any static platform. `base: './'` keeps assets portable
-  across subpaths, and a `.nojekyll` file ships the hashed assets untouched, so it
-  deploys to GitHub Pages as-is; the single-threaded wasm needs no
-  cross-origin-isolation headers.
+  component. `base: './'` keeps assets portable across subpaths, so this repo
+  publishes it to GitHub Pages at
+  <https://0xsymbiome.github.io/cow-sdk-examples/cow-swap-wasm> through
+  `.github/workflows/deploy-cow-swap-wasm.yml`. The single-threaded wasm needs no
+  cross-origin-isolation headers, and the bundle hosts on any other static
+  platform too.
 - **Choosing this package.** For a standard production browser dapp where minimal
   bundle size dominates, the upstream
   [`@cowprotocol/cow-sdk`](https://www.npmjs.com/package/@cowprotocol/cow-sdk) is

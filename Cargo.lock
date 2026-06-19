@@ -1226,9 +1226,9 @@ checksum = "773648b94d0e5d620f64f280777445740e61fe701025087ec8b57f45c791888b"
 
 [[package]]
 name = "cow-sdk"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "350faaea402130a8e49c022bb3a4ce64ee069d1f8b9648d7643e61ffaf4e5a29"
+checksum = "47484cb468ff4bb7960c024dab716daafc60267b623aa5a03255553758a9531b"
 dependencies = [
  "cow-sdk-alloy",
  "cow-sdk-alloy-provider",
@@ -1246,9 +1246,9 @@ dependencies = [
 
 [[package]]
 name = "cow-sdk-alloy"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "14453fd9e028f3433856a9cfe9cc9fd25edce064a258323ba6d11885f6260e13"
+checksum = "4fff2af1d6af1a7ae659bcd74240bd6cbc7fcde008eaa06b14f62e57c65eabfc"
 dependencies = [
  "alloy-network",
  "alloy-primitives",
@@ -1267,9 +1267,9 @@ dependencies = [
 
 [[package]]
 name = "cow-sdk-alloy-provider"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "853721b672fac718d24cbb27d9a3217a4eca5d89e2e8d2b983be7540a910d6b9"
+checksum = "44b9b853cd36fffc2d4a1844a7d28d99e89a1061b0e5fcc745626afd2ea03380"
 dependencies = [
  "alloy-consensus",
  "alloy-dyn-abi",
@@ -1289,9 +1289,9 @@ dependencies = [
 
 [[package]]
 name = "cow-sdk-alloy-signer"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "d7f691b174057c88e4af6a0b549f9528cd5aa9a0020292316f956e248b3a64df"
+checksum = "458f0fd5fb0abbb940981999eb11f7ca63c14ed0f7297f69ea88d2ce4f2aa88f"
 dependencies = [
  "alloy-dyn-abi",
  "alloy-primitives",
@@ -1305,9 +1305,9 @@ dependencies = [
 
 [[package]]
 name = "cow-sdk-app-data"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "0118ace635d044fd6342026c61c220e39c240f22631cfcf85eaf7fdb564da980"
+checksum = "07a7fe5992984e6678e67042060f9ed4b3980e4ffbaefd4e346b7367d4f0ca51"
 dependencies = [
  "alloy-primitives",
  "alloy-serde 1.8.3",
@@ -1325,9 +1325,9 @@ dependencies = [
 
 [[package]]
 name = "cow-sdk-contracts"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "fca16b281d42d800df1c1b35916662d7eadefc9766136752a279edc9dcec57dd"
+checksum = "ecfd3fdb0c197ef8d961f0bf673d425905e3c50f70e9a36cb5734d834cf06760"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -1341,9 +1341,9 @@ dependencies = [
 
 [[package]]
 name = "cow-sdk-core"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "7b8f9949e5d07c2b14e2e2464c593a630c4ba8d03c2e7dbcf11a1cd6f96a0b9b"
+checksum = "0bafcaebbba02e7069a8802b9be263a74309c08a5d36312cb4b66b27b238ae69"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -1369,9 +1369,9 @@ dependencies = [
 
 [[package]]
 name = "cow-sdk-orderbook"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "c32c1cd9f55f65bfd1a3cacf1360f03a1bcc249ced61b9822919e653a5c3e3f3"
+checksum = "b5f2e95cea8dd849628f6d93ad2339cce288b79c8231457dd31f891c0bde2714"
 dependencies = [
  "async-trait",
  "cow-sdk-core",
@@ -1386,9 +1386,9 @@ dependencies = [
 
 [[package]]
 name = "cow-sdk-signing"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "3d5ae2022147bfcffae65b4ffcf4aea13cab17e60927d18bb515317c70e7e6b0"
+checksum = "ff57b3cfc6025e6c0367751b91371726c811f658ce452e516f50fb69b7f7628a"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",
@@ -1403,9 +1403,9 @@ dependencies = [
 
 [[package]]
 name = "cow-sdk-subgraph"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "f7d37e6b2e6684a25cbb84d1f8931a2b63c3dbf3df7aaa040234343c9df67c21"
+checksum = "ec83887c7fb5e5895489453941464c72081d9b54006379603ebac519f4b25cdf"
 dependencies = [
  "cow-sdk-core",
  "reqwest",
@@ -1418,9 +1418,9 @@ dependencies = [
 
 [[package]]
 name = "cow-sdk-test"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "a60efc90e8793a3c97ed1f1240fecb92512fe2cc550e556882cf1f1e17949e92"
+checksum = "63a1fb5f8f8a66cfde52842f45c9f88afb310e8c99d0204841807e67fe547d74"
 dependencies = [
  "alloy-dyn-abi",
  "alloy-primitives",
@@ -1435,9 +1435,9 @@ dependencies = [
 
 [[package]]
 name = "cow-sdk-trading"
-version = "0.1.0-alpha.5"
+version = "0.1.0-alpha.6"
 source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "b564a7eca31ddce0d672035dbd88d8cd5bae093d9f945e4e9c0dfc885c643404"
+checksum = "051213bf0c190422aed417e09da6035e4450ad6e454cd8ab997da8e10100499d"
 dependencies = [
  "alloy-primitives",
  "alloy-sol-types",

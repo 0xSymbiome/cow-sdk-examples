@@ -1,0 +1,77 @@
+# Build the cow-swap-wasm flagship example and publish it to GitHub Pages,
+# served at /cow-sdk-examples/cow-swap-wasm.
+name: deploy-cow-swap-wasm
+
+on:
+  push:
+    branches: [main]
+    paths:
+      - "examples/wasm/cow-swap-wasm/**"
+      - ".github/workflows/deploy-cow-swap-wasm.yml"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+# One Pages deployment at a time; let an in-flight production deploy finish.
+concurrency:
+  group: pages
+  cancel-in-progress: false
+
+env:
+  FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: 'true'
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: examples/wasm/cow-swap-wasm
+    steps:
+      # Source ref: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      # Source ref: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
+        with:
+          version: 11.7.0
+      # Source ref: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: examples/wasm/cow-swap-wasm/pnpm-lock.yaml
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm build
+      # Serve the dApp at /cow-sdk-examples/cow-swap-wasm rather than the Pages
+      # root: stage the build under a cow-swap-wasm/ folder, and drop a root
+      # redirect so /cow-sdk-examples/ lands on the example instead of a 404.
+      # base: './' in the Vite config keeps the hashed assets resolving from the
+      # subpath. Paths under upload-pages-artifact are repo-root-relative.
+      - name: Stage the site under the cow-swap-wasm subpath
+        run: |
+          mkdir -p "$GITHUB_WORKSPACE/_site/cow-swap-wasm"
+          cp -r dist/. "$GITHUB_WORKSPACE/_site/cow-swap-wasm/"
+          printf '<!doctype html><meta http-equiv="refresh" content="0; url=./cow-swap-wasm/">\n' > "$GITHUB_WORKSPACE/_site/index.html"
+      # Source ref: actions/configure-pages@v6
+      - uses: actions/configure-pages@45bfe0192ca1faeb007ade9deae92b16b8254a0d
+      # Source ref: actions/upload-pages-artifact@v5
+      - uses: actions/upload-pages-artifact@fc324d3547104276b827a68afc52ff2a11cc49c9
+        with:
+          path: _site
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - id: deployment
+        # Source ref: actions/deploy-pages@v5
+        uses: actions/deploy-pages@cd2ce8fcbc39b97be8ca5fce6e763baed58fa128

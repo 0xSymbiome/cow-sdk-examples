@@ -2,18 +2,19 @@
 import babel from '@rolldown/plugin-babel'
 import react, { reactCompilerPreset } from '@vitejs/plugin-react'
 import { defineConfig } from 'vite'
-import wasm from 'vite-plugin-wasm'
 
-// The `trading` flavor is consumed through its `bundler` target: the wasm-bindgen
-// bundler output references the `.wasm` asset, which vite-plugin-wasm instantiates
-// on import. Vite 8 (Rolldown) with an es2022 target supports the resulting
-// top-level await natively. React Compiler runs as a Babel pass via the plugin's
-// reactCompilerPreset.
+// The `trading` flavor resolves to its `web` target for the browser: the facade
+// calls `initialize()` once (see `ensureCowReady`) and the loader fetches the wasm
+// through `new URL('..._bg.wasm', import.meta.url)`, an asset Vite emits and
+// resolves natively across every bundler and with no bundler at all — so no
+// `vite-plugin-wasm` (the bundler-target `import * as wasm` integration that broke
+// on static hosting) is needed. React Compiler runs as a Babel pass via the
+// plugin's reactCompilerPreset.
 export default defineConfig({
   base: './',
-  plugins: [react(), babel({ presets: [reactCompilerPreset()] }), wasm()],
-  // The SDK ships its own instantiated wasm; let Vite handle it via the wasm
-  // plugin rather than esbuild's dependency pre-bundling.
+  plugins: [react(), babel({ presets: [reactCompilerPreset()] })],
+  // The SDK owns its own wasm instantiation through `initialize()`; keep it out of
+  // esbuild dependency pre-bundling so Vite serves the ESM facade and wasm asset.
   optimizeDeps: { exclude: ['@symbiome-forge/cow-sdk-wasm'] },
   build: { target: 'es2022' },
   test: {

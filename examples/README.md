@@ -9,7 +9,8 @@ is available.
 
 The fastest way to see the whole order lifecycle is the flagship browser dApp,
 **[`cow-swap-wasm`](wasm/cow-swap-wasm)** — quote, sign, post, track, surplus, and
-cancel, entirely client-side.
+cancel, entirely client-side
+([live demo](https://0xsymbiome.github.io/cow-sdk-examples/cow-swap-wasm)).
 
 | If you want to… | Look at |
 | --- | --- |

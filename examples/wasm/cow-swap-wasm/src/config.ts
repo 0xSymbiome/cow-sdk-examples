@@ -1,6 +1,6 @@
 // Public application identifier attached to every order for solver attribution.
 // App codes are public order metadata, never a secret.
-export const APP_CODE = 'cow-sdk-wasm-swap-demo'
+export const APP_CODE = 'cow-swap-wasm'
 
 // Default slippage applied to market swaps unless the user overrides it.
 export const DEFAULT_SLIPPAGE_BPS = 50

@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@symbiome-forge/cow-sdk-wasm':
-        specifier: 0.1.0-alpha.5
-        version: 0.1.0-alpha.5
+        specifier: 0.1.0-alpha.6
+        version: 0.1.0-alpha.6
       '@tanstack/react-query':
         specifier: ^5.101.0
         version: 5.101.0(react@19.2.7)
@@ -69,9 +69,6 @@ importers:
       vite:
         specifier: ^8.0.16
         version: 8.0.16(@types/node@25.9.3)
-      vite-plugin-wasm:
-        specifier: ^3.6.0
-        version: 3.6.0(vite@8.0.16(@types/node@25.9.3))
       vitest:
         specifier: 4.1.9
         version: 4.1.9(@types/node@25.9.3)(vite@8.0.16(@types/node@25.9.3))
@@ -437,8 +434,8 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
-  '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.5':
-    resolution: {integrity: sha512-tW2hJtVkTrXWmXak4L+USTNHyBJ/OcwOEGtB+T0AkuUK917xnSxv/vd1W4pfxRI4hEv9HtpGo8j/Gwl3y28I2w==}
+  '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.6':
+    resolution: {integrity: sha512-+JbiPo5rMS0YWAQcJJh9as5d4xDFIdAcCtjwKjNH8EJRCH4mqh9etsC6mrvfOpfs1MxsWR6Tb/G0DZAtGvx0sA==}
     engines: {node: '>=22.0.0'}
 
   '@tanstack/query-core@5.101.0':
@@ -1142,11 +1139,6 @@ packages:
       typescript:
         optional: true
 
-  vite-plugin-wasm@3.6.0:
-    resolution: {integrity: sha512-mL/QPziiIA4RAA6DkaZZzOstdwbW5jO4Vz7Zenj0wieKWBlNvIvX5L5ljum9lcUX0ShNfBgCNLKTjNkRVVqcsw==}
-    peerDependencies:
-      vite: ^2 || ^3 || ^4 || ^5 || ^6 || ^7 || ^8
-
   vite@8.0.16:
     resolution: {integrity: sha512-h9bXPmJichP5fLmVQo3PyaGSDE2n3aPuomeAlVRm0JLmt4rY6zmPKd59HYI4LNW8oTK7tlTsuC7l/m7awx9Jcw==}
     engines: {node: ^20.19.0 || >=22.12.0}
@@ -1634,7 +1626,7 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.5': {}
+  '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.6': {}
 
   '@tanstack/query-core@5.101.0': {}
 
@@ -2319,10 +2311,6 @@ snapshots:
       - bufferutil
       - utf-8-validate
       - zod
-
-  vite-plugin-wasm@3.6.0(vite@8.0.16(@types/node@25.9.3)):
-    dependencies:
-      vite: 8.0.16(@types/node@25.9.3)
 
   vite@8.0.16(@types/node@25.9.3):
     dependencies:

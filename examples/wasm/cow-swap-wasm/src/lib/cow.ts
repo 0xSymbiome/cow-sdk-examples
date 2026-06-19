@@ -15,9 +15,10 @@ import { APP_CODE } from '../config'
 let initialized: Promise<void> | undefined
 
 /**
- * Idempotently initialize the wasm module. On the `bundler` target the module
- * is instantiated on import, so this resolves immediately — calling it keeps one
- * initialization shape that also works on the `web`/edge target.
+ * Idempotently initialize the wasm module. The browser resolves the trading
+ * flavour's `web` target, which fetches and instantiates the module on this call;
+ * the `bundler`/`nodejs` targets instantiate on import, so this resolves
+ * immediately there — one initialization shape works across every target.
  */
 export function ensureCowReady(): Promise<void> {
   initialized ??= initialize()

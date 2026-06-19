@@ -9,8 +9,8 @@ importers:
   .:
     dependencies:
       '@symbiome-forge/cow-sdk-wasm':
-        specifier: 0.1.0-alpha.5
-        version: 0.1.0-alpha.5
+        specifier: 0.1.0-alpha.6
+        version: 0.1.0-alpha.6
     devDependencies:
       '@cloudflare/vitest-pool-workers':
         specifier: 0.16.13
@@ -709,8 +709,8 @@ packages:
   '@standard-schema/spec@1.1.0':
     resolution: {integrity: sha512-l2aFy5jALhniG5HgqrD6jXLi/rUWrKvqN/qJx6yoJsgKhblVd+iqqU4RCXavm/jPityDo5TCvKMnpjKnOriy0w==}
 
-  '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.5':
-    resolution: {integrity: sha512-tW2hJtVkTrXWmXak4L+USTNHyBJ/OcwOEGtB+T0AkuUK917xnSxv/vd1W4pfxRI4hEv9HtpGo8j/Gwl3y28I2w==}
+  '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.6':
+    resolution: {integrity: sha512-+JbiPo5rMS0YWAQcJJh9as5d4xDFIdAcCtjwKjNH8EJRCH4mqh9etsC6mrvfOpfs1MxsWR6Tb/G0DZAtGvx0sA==}
     engines: {node: '>=22.0.0'}
 
   '@tybys/wasm-util@0.10.2':
@@ -1529,7 +1529,7 @@ snapshots:
 
   '@standard-schema/spec@1.1.0': {}
 
-  '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.5': {}
+  '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.6': {}
 
   '@tybys/wasm-util@0.10.2':
     dependencies:
