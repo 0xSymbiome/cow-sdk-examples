@@ -9,7 +9,13 @@ import { useTokenList, type TokenInfo } from '../../tokens/tokens'
 import { Badge, Button, Spinner } from '../../ui/primitives'
 import { useToast } from '../../ui/toast'
 import { useWallet } from '../../wallet/WalletProvider'
-import { useCancelOrder, useCompetition, useOrders, useTotalSurplus } from './orders'
+import {
+  useCancelOrder,
+  useCompetition,
+  useInvalidateSurplusOnFill,
+  useOrders,
+  useTotalSurplus,
+} from './orders'
 
 const STATUS: Record<OrderStatusDto, { label: string; tone: 'pending' | 'info' | 'success' | 'warning' | 'danger' }> = {
   open: { label: 'Open', tone: 'pending' },
@@ -23,6 +29,7 @@ export function OrdersPanel() {
   const { chainId, account } = useWallet()
   const orders = useOrders(chainId, account)
   const surplus = useTotalSurplus(chainId, account)
+  useInvalidateSurplusOnFill(chainId, account, orders.data)
   const tokenList = useTokenList(chainId)
 
   const tokenMap = useMemo(() => {

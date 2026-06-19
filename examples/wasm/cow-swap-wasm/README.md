@@ -82,6 +82,10 @@ surplus and solver competition.
   hosting (the bundler-target `import * as wasm` integration is not portable there).
 - **Key handling.** Connect a real wallet. The SDK never holds key material; the
   wallet signs every order and cancellation through a callback.
+- **Console output.** Browser wallet extensions inject a content script that logs
+  its own diagnostics (for example `ObjectMultiplex` notices or an `EventEmitter`
+  listener warning). Those come from the extension, not this app, and are safe to
+  ignore.
 - **Errors are states, not strings.** SDK failures throw a typed `CowError`
   discriminated union; the app maps each variant (`walletRequest` 4001 →
   soft-cancel, `orderbook` → its `category`/`retryable` verdict, …) to a specific

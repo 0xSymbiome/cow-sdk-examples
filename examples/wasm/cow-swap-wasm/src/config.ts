@@ -5,8 +5,11 @@ export const APP_CODE = 'cow-swap-wasm'
 // Default slippage applied to market swaps unless the user overrides it.
 export const DEFAULT_SLIPPAGE_BPS = 50
 
-// How often open orders are re-polled while the activity panel is mounted.
-export const ORDER_POLL_INTERVAL_MS = 4_000
+// How often orders are re-polled while one is still settling.
+export const ORDER_POLL_PENDING_MS = 4_000
+
+// Idle re-poll cadence once nothing is settling.
+export const ORDER_POLL_IDLE_MS = 30_000
 
 // How long a freshly fetched quote is treated as valid in the UI before it is
 // re-requested. The orderbook also returns an absolute expiry we display.

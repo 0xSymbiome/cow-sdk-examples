@@ -1,19 +1,27 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
+import { useEffect, useRef } from 'react'
 import type { Address } from 'viem'
 
-import { signCancellationWithTypedDataSigner } from '@symbiome-forge/cow-sdk-wasm/trading'
+import { signCancellationWithTypedDataSigner, type OrderDto } from '@symbiome-forge/cow-sdk-wasm/trading'
 
-import { ORDER_POLL_INTERVAL_MS } from '../../config'
+import { ORDER_POLL_IDLE_MS, ORDER_POLL_PENDING_MS } from '../../config'
 import { getOrderBookClient } from '../../lib/cow'
 import { typedDataSigner } from '../../lib/cow-callbacks'
 import { useWallet } from '../../wallet/WalletProvider'
 
-/** The connected account's recent orders, polled while mounted. */
+// An order is still settling only while open or awaiting its pre-signature.
+function hasPendingOrder(orders: OrderDto[] | undefined): boolean {
+  return orders?.some((o) => o.status === 'open' || o.status === 'presignaturePending') ?? false
+}
+
+/** The connected account's recent orders: re-polled quickly while an order is
+ *  settling, and slowly otherwise. */
 export function useOrders(chainId: number | undefined, account: Address | undefined) {
   return useQuery({
     queryKey: ['orders', chainId, account],
     enabled: chainId !== undefined && account !== undefined,
-    refetchInterval: ORDER_POLL_INTERVAL_MS,
+    refetchInterval: (query) =>
+      hasPendingOrder(query.state.data) ? ORDER_POLL_PENDING_MS : ORDER_POLL_IDLE_MS,
     queryFn: () =>
       getOrderBookClient(chainId as number)
         .getOrders(account as Address)
@@ -21,17 +29,36 @@ export function useOrders(chainId: number | undefined, account: Address | undefi
   })
 }
 
-/** Cumulative surplus CoW has captured for the account — the headline value-prop. */
+/** Cumulative surplus captured for the account. It only changes when an order
+ *  fills, so it is fetched once and refreshed by invalidation, not a timer. */
 export function useTotalSurplus(chainId: number | undefined, account: Address | undefined) {
   return useQuery({
     queryKey: ['surplus', chainId, account],
     enabled: chainId !== undefined && account !== undefined,
-    refetchInterval: ORDER_POLL_INTERVAL_MS * 3,
+    refetchInterval: false,
+    staleTime: Infinity,
     queryFn: () =>
       getOrderBookClient(chainId as number)
         .getTotalSurplus(account as Address)
         .then((envelope) => envelope.value),
   })
+}
+
+/** Refresh the cached surplus whenever a newly observed order has filled. */
+export function useInvalidateSurplusOnFill(
+  chainId: number | undefined,
+  account: Address | undefined,
+  orders: OrderDto[] | undefined,
+) {
+  const queryClient = useQueryClient()
+  const filled = orders?.filter((o) => o.status === 'fulfilled').length ?? 0
+  const previousFilled = useRef(filled)
+  useEffect(() => {
+    if (filled > previousFilled.current) {
+      void queryClient.invalidateQueries({ queryKey: ['surplus', chainId, account] })
+    }
+    previousFilled.current = filled
+  }, [filled, chainId, account, queryClient])
 }
 
 /** Live solver-competition status for a single order (fetched on demand). */

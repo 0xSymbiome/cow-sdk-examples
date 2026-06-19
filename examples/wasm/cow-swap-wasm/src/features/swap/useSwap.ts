@@ -1,4 +1,4 @@
-import { useMutation, useQuery } from '@tanstack/react-query'
+import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import type { Address, Hex } from 'viem'
 
@@ -113,6 +113,7 @@ async function ensureApproved(
  */
 export function useTradeExecutor() {
   const { walletClient, publicClient, account, chainId } = useWallet()
+  const queryClient = useQueryClient()
   const [step, setStep] = useState<TradeStep>('idle')
 
   const ready = Boolean(walletClient) && Boolean(publicClient) && account !== undefined && chainId !== undefined
@@ -155,6 +156,7 @@ export function useTradeExecutor() {
         setStep('idle')
       }
     },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['orders', chainId, account] }),
   })
 
   const limit = useMutation<PostedOrder, Error, { params: LimitTradeParametersInput; sellToken: string }>({
@@ -176,6 +178,7 @@ export function useTradeExecutor() {
         setStep('idle')
       }
     },
+    onSuccess: () => void queryClient.invalidateQueries({ queryKey: ['orders', chainId, account] }),
   })
 
   const reset = useCallback(() => {
