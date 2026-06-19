@@ -49,7 +49,15 @@ export function InspectorDrawer() {
               >
                 cow-sdk-wasm v{sdkVersion}
               </a>
-              {' · trading flavor'}
+              {' · '}
+              <a
+                className="src-link"
+                href={`https://github.com/0xSymbiome/cow-rs/blob/v${sdkVersion}/crates/wasm/snapshots/facade/trading.d.ts`}
+                target="_blank"
+                rel="noreferrer"
+              >
+                trading flavor
+              </a>
             </small>
           </header>
 
