@@ -293,16 +293,21 @@ body {
 .review-details > div {
   display: flex;
   justify-content: space-between;
+  gap: 12px;
   font-size: 13px;
 }
 .quote-summary dt,
 .review-details dt {
   color: var(--muted);
+  flex-shrink: 0;
 }
 .quote-summary dd,
 .review-details dd {
   margin: 0;
+  min-width: 0;
   font-variant-numeric: tabular-nums;
+  overflow-wrap: anywhere;
+  text-align: right;
 }
 
 .notice {
@@ -548,8 +553,12 @@ body {
   font-size: 12px;
   display: block;
 }
+.review-leg > div {
+  min-width: 0;
+}
 .review-leg strong {
   font-size: 18px;
+  overflow-wrap: anywhere;
 }
 .review-arrow {
   color: var(--muted);

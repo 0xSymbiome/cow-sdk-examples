@@ -112,10 +112,19 @@ export function SwapCard() {
   }
 
   const amountEntered = isPositiveAmount(sellAmount, sellToken?.decimals ?? 18)
+  // Require the balance only for a market swap. A limit order is a standing intent
+  // the user may fund later, so it is allowed above the current balance.
+  const insufficientBalance =
+    mode === 'market' &&
+    amountEntered &&
+    sellToken !== undefined &&
+    sellBalance !== undefined &&
+    BigInt(toAtoms(sellAmount, sellToken.decimals)) > BigInt(sellBalance)
   const limitReady =
     mode === 'limit' && amountEntered && isPositiveAmount(limitBuyAmount, buyToken?.decimals ?? 18)
   const marketReady = mode === 'market' && Boolean(quote.data)
-  const canReview = account !== undefined && !wrongNetwork && (marketReady || limitReady)
+  const canReview =
+    account !== undefined && !wrongNetwork && !insufficientBalance && (marketReady || limitReady)
 
   return (
     <section className="card swap-card">
@@ -190,9 +199,11 @@ export function SwapCard() {
             ? 'Unsupported network'
             : !amountEntered
               ? 'Enter an amount'
-              : mode === 'market' && quote.isFetching && !quote.data
-                ? 'Fetching quote…'
-                : 'Review order'}
+              : insufficientBalance
+                ? `Insufficient ${sellToken?.symbol ?? ''} balance`
+                : mode === 'market' && quote.isFetching && !quote.data
+                  ? 'Fetching quote…'
+                  : 'Review order'}
       </Button>
 
       <TokenSelect
@@ -254,9 +265,11 @@ function TokenField({
     <div className="token-field">
       <span className="token-field-label">{label}</span>
       <div className="token-field-row">
+        {/* No real token amount needs this many characters; the cap stops pathological input. */}
         <input
           className={`amount-input${amount.length > 18 ? ' amount-xs' : amount.length > 11 ? ' amount-sm' : ''}`}
           inputMode="decimal"
+          maxLength={30}
           placeholder={loading ? '…' : '0.0'}
           value={amount}
           readOnly={!editable}

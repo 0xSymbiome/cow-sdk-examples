@@ -97,12 +97,20 @@ async function ensureApproved(
   if (BigInt(allowance) >= BigInt(sellAtoms)) return
 
   const tx = (await trading.buildApprovalTx({ tokenAddress: sellToken, amount: sellAtoms })).value
+  const to = tx.to as Address
+  const data = (tx.data ?? '0x') as Hex
+  const value = BigInt(tx.value ?? '0')
+  // The SDK leaves approve gas to the caller. Bound it here — estimate plus a 20%
+  // margin, with a fixed fallback — so a wallet or node over-estimate cannot be
+  // rejected as "gas limit too high".
+  const estimated = await publicClient.estimateGas({ account, to, data, value }).catch(() => 150_000n)
   const hash = await walletClient.sendTransaction({
     account,
     chain: null,
-    to: tx.to as Address,
-    data: (tx.data ?? '0x') as Hex,
-    value: BigInt(tx.value ?? '0'),
+    to,
+    data,
+    value,
+    gas: (estimated * 12n) / 10n,
   })
   await publicClient.waitForTransactionReceipt({ hash })
 }
