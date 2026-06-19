@@ -274,7 +274,8 @@ function TokenField({
           value={amount}
           readOnly={!editable}
           onChange={(event) => {
-            const next = event.target.value
+            // Some mobile keypads emit the locale decimal separator (a comma); store a dot.
+            const next = event.target.value.replace(/,/g, '.')
             if (next === '' || /^\d*\.?\d*$/.test(next)) onAmount(next)
           }}
         />
