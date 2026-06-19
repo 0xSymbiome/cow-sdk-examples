@@ -21,7 +21,7 @@ import {
 } from './settings'
 import { SwapSettingsPanel } from './SwapSettings'
 import { TokenSelect } from './TokenSelect'
-import { useQuote } from './useSwap'
+import { useNativePrice, useQuote } from './useSwap'
 
 type Mode = 'market' | 'limit'
 type Side = 'sell' | 'buy'
@@ -131,6 +131,27 @@ export function SwapCard() {
   // change between the user reading them and signing.
   const quote = useQuote(chainId, swapParams, !reviewing)
   const amounts = quote.data?.amountsAndCosts
+  const sellPrice = useNativePrice(chainId, sellToken?.address)
+  const buyPrice = useNativePrice(chainId, buyToken?.address)
+
+  // Price impact: the value given up versus the native-price mid, as a clean
+  // dimensionless ratio (the native units cancel). A thin testnet price feed can
+  // produce implausible values, so it is shown only when both prices load and the
+  // result is sane — the minimum-received bound still protects the trade either way.
+  const sellValueNative =
+    amounts && sellPrice.data !== undefined
+      ? Number(amounts.afterPartnerFees.sellAmount) * sellPrice.data
+      : undefined
+  const buyValueNative =
+    amounts && buyPrice.data !== undefined
+      ? Number(amounts.afterPartnerFees.buyAmount) * buyPrice.data
+      : undefined
+  const rawPriceImpact =
+    sellValueNative !== undefined && buyValueNative !== undefined && sellValueNative > 0
+      ? 1 - buyValueNative / sellValueNative
+      : undefined
+  const priceImpact =
+    rawPriceImpact !== undefined && Math.abs(rawPriceImpact) < 0.5 ? rawPriceImpact : undefined
 
   // The non-fixed field shows the SDK's estimate (after fees, before the slippage buffer).
   const estimatedSell = amounts && sellToken ? formatAmount(amounts.afterPartnerFees.sellAmount, sellToken.decimals) : ''
@@ -292,6 +313,7 @@ export function SwapCard() {
             6,
           )}
           sellSymbol={sellToken.symbol}
+          priceImpact={priceImpact}
           slippageBps={shownSlippageBps}
           slippageAuto={settings.slippage.mode === 'auto'}
           expiration={quote.data.quoteResponse.expiration}
@@ -439,6 +461,7 @@ interface QuoteSummaryProps {
   boundSymbol: string
   networkCost: string
   sellSymbol: string
+  priceImpact: number | undefined
   slippageBps: number | undefined
   slippageAuto: boolean
   expiration: string
@@ -450,6 +473,7 @@ function QuoteSummary({
   boundSymbol,
   networkCost,
   sellSymbol,
+  priceImpact,
   slippageBps,
   slippageAuto,
   expiration,
@@ -468,6 +492,12 @@ function QuoteSummary({
           {networkCost} {sellSymbol}
         </dd>
       </div>
+      {priceImpact !== undefined ? (
+        <div>
+          <dt>Price impact</dt>
+          <dd className={priceImpact > 0.05 ? 'impact-warn' : undefined}>{(priceImpact * -100).toFixed(2)}%</dd>
+        </div>
+      ) : null}
       <div>
         <dt>Slippage tolerance{slippageAuto ? ' (auto)' : ''}</dt>
         <dd>{slippageBps !== undefined ? `${(slippageBps / 100).toFixed(2)}%` : '—'}</dd>

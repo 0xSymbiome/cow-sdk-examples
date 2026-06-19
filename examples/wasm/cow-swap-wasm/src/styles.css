@@ -350,6 +350,9 @@ body {
   font-size: 13px;
   margin: 12px 0 0;
 }
+.impact-warn {
+  color: var(--danger);
+}
 .muted {
   color: var(--muted);
   font-size: 14px;

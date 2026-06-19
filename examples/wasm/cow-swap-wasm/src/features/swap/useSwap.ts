@@ -11,7 +11,7 @@ import type {
 import type { PublicClient, WalletClient } from 'viem'
 
 import { QUOTE_REFRESH_INTERVAL_MS } from '../../config'
-import { getTradingClient } from '../../lib/cow'
+import { getOrderBookClient, getTradingClient } from '../../lib/cow'
 import { contractReader, typedDataSigner } from '../../lib/cow-callbacks'
 import { recordQuote } from '../inspector/store'
 import { useWallet } from '../../wallet/WalletProvider'
@@ -45,6 +45,24 @@ export function useQuote(
       recordQuote(quote)
       return quote
     },
+  })
+}
+
+/**
+ * The token's native-currency price (per atom), used to estimate price impact.
+ * Prices move slowly, so the result is cached; a failure resolves to no price so
+ * the caller can simply omit the impact line.
+ */
+export function useNativePrice(chainId: number | undefined, tokenAddress: string | undefined) {
+  return useQuery({
+    queryKey: ['native-price', chainId, tokenAddress],
+    enabled: chainId !== undefined && tokenAddress !== undefined,
+    staleTime: 60_000,
+    retry: false,
+    queryFn: () =>
+      getOrderBookClient(chainId as number)
+        .getNativePrice(tokenAddress as string)
+        .then((envelope) => envelope.value.price),
   })
 }
 
