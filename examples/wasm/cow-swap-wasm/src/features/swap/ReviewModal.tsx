@@ -58,7 +58,7 @@ export function ReviewModal({
 
   const buyDisplay =
     mode === 'market' && quote
-      ? formatAmount(quote.amountsAndCosts.amountsToSign.buyAmount, buyToken.decimals)
+      ? formatAmount(quote.amountsAndCosts.afterPartnerFees.buyAmount, buyToken.decimals)
       : limitBuyAmount
   const minReceived =
     mode === 'market' && quote
@@ -139,6 +139,19 @@ export function ReviewModal({
               {minReceived} {buyToken.symbol}
             </dd>
           </div>
+          {mode === 'market' && quote ? (
+            <div>
+              <dt>Network cost</dt>
+              <dd>
+                {formatAmount(
+                  quote.amountsAndCosts.costs.networkFee.amountInSellCurrency,
+                  sellToken.decimals,
+                  6,
+                )}{' '}
+                {sellToken.symbol}
+              </dd>
+            </div>
+          ) : null}
           <div>
             <dt>Slippage tolerance</dt>
             <dd>{(slippageBps / 100).toFixed(2)}%</dd>

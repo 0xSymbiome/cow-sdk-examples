@@ -100,7 +100,7 @@ export function SwapCard() {
   const buyDisplay =
     mode === 'market'
       ? quote.data && buyToken
-        ? formatAmount(quote.data.amountsAndCosts.amountsToSign.buyAmount, buyToken.decimals)
+        ? formatAmount(quote.data.amountsAndCosts.afterPartnerFees.buyAmount, buyToken.decimals)
         : ''
       : limitBuyAmount
 

@@ -20,6 +20,8 @@ export function Header() {
   const menuRef = useRef<HTMLDivElement>(null)
   const chains = supportedChains()
   const knownChain = chainId !== undefined && chainMeta(chainId) !== undefined
+  // Phone browsers have no injected provider; a wallet's in-app browser does.
+  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
 
   // Close the account menu on an outside click or Escape.
   useEffect(() => {
@@ -143,10 +145,29 @@ export function Header() {
 
       <Modal open={picking} onClose={() => setPicking(false)} title="Connect a wallet">
         {providers.length === 0 ? (
-          <p className="muted">
-            No injected wallet found. Install MetaMask, Rabby, Frame, or another EIP-6963 wallet and
-            reload.
-          </p>
+          isMobile ? (
+            <div>
+              <p className="muted">Open this page inside your wallet app&apos;s browser to connect:</p>
+              <ul className="wallet-list">
+                <li>
+                  <a href={`https://link.metamask.io/dapp/${window.location.host}${window.location.pathname}`}>
+                    Open in MetaMask
+                  </a>
+                </li>
+                <li>
+                  <a href={`https://go.cb-w.com/dapp?cb_url=${encodeURIComponent(window.location.href)}`}>
+                    Open in Coinbase Wallet
+                  </a>
+                </li>
+              </ul>
+              <p className="muted">Or paste this page&apos;s URL into any wallet&apos;s in-app browser.</p>
+            </div>
+          ) : (
+            <p className="muted">
+              No injected wallet found. Install MetaMask, Rabby, Frame, or another EIP-6963 wallet and
+              reload.
+            </p>
+          )
         ) : (
           <ul className="wallet-list">
             {providers.map((detail) => (

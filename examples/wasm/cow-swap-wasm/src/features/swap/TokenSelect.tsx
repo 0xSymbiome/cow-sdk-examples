@@ -97,6 +97,13 @@ export function TokenSelect({ open, onClose, tokens, onSelect, excludeAddress }:
           )
         })}
       </ul>
+      {filtered.length === 0 && !canImport ? (
+        <p className="token-empty">
+          {all.length === 0
+            ? 'Connect a wallet to load the token list.'
+            : 'No tokens match your search.'}
+        </p>
+      ) : null}
 
       {canImport ? (
         <div className="token-import">
