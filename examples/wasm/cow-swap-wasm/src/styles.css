@@ -350,6 +350,25 @@ body {
 .impact-warn {
   color: var(--danger);
 }
+.fee-warning {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin-top: 14px;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, var(--warning) 30%, transparent);
+  border-radius: var(--radius-sm);
+  background: color-mix(in srgb, var(--warning) 12%, var(--surface-2));
+}
+.fee-warning .cow {
+  flex-shrink: 0;
+}
+.fee-warning p {
+  margin: 0;
+  font-size: 13px;
+  line-height: 1.5;
+  color: var(--text);
+}
 .muted {
   color: var(--muted);
   font-size: 14px;

@@ -8,6 +8,7 @@ import { formatAmount, fromAtoms, isPositiveAmount, toAtoms } from '../../lib/fo
 import { toUiError } from '../../lib/cow-errors'
 import { isSupportedChain } from '../../chains/registry'
 import { useBalances, useTokenList, type TokenInfo } from '../../tokens/tokens'
+import { Cow } from '../../ui/Cow'
 import { Button } from '../../ui/primitives'
 import { TokenLogo } from '../../ui/TokenLogo'
 import { useWallet } from '../../wallet/WalletProvider'
@@ -166,6 +167,18 @@ export function SwapCard() {
       : undefined
   const priceImpact =
     rawPriceImpact !== undefined && Math.abs(rawPriceImpact) < 0.5 ? rawPriceImpact : undefined
+
+  // High-fee guard: the network fee as a share of the trade. On tiny trades the fee
+  // can dominate — worth flagging, though the minimum-received bound still holds.
+  const feePercent =
+    amounts && Number(amounts.afterPartnerFees.sellAmount) > 0
+      ? Math.round(
+          (Number(amounts.costs.networkFee.amountInSellCurrency) /
+            Number(amounts.afterPartnerFees.sellAmount)) *
+            100,
+        )
+      : undefined
+  const highFee = mode === 'market' && feePercent !== undefined && feePercent >= 10
 
   // The non-fixed field shows the SDK's estimate (after fees, before the slippage buffer).
   const estimatedSell = amounts && sellToken ? formatAmount(amounts.afterPartnerFees.sellAmount, sellToken.decimals) : ''
@@ -335,6 +348,16 @@ export function SwapCard() {
           slippageAuto={settings.slippage.mode === 'auto'}
           refreshAt={refreshAt}
         />
+      ) : null}
+
+      {highFee ? (
+        <div className="fee-warning">
+          <Cow mood="worried" size={40} />
+          <p>
+            Network fees are about {feePercent}% of this trade. Small trades can cost more in fees
+            than they save — consider a larger amount.
+          </p>
+        </div>
       ) : null}
 
       <Button
