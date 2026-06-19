@@ -14,9 +14,12 @@ import { useNeedsApproval, useTradeExecutor, type TradeStep } from './useSwap'
 
 interface ReviewModalProps {
   mode: 'market' | 'limit'
+  // Which side is exact: 'sell' (quote the buy) or 'buy' (quote the sell). Market only.
+  side: 'sell' | 'buy'
   sellToken: TokenInfo
   buyToken: TokenInfo
   sellAmount: string
+  buyAmount: string
   limitBuyAmount: string
   settings: SwapSettings
   quote: QuoteResultsDto | undefined
@@ -43,9 +46,11 @@ function shortAddress(address: string): string {
 
 export function ReviewModal({
   mode,
+  side,
   sellToken,
   buyToken,
   sellAmount,
+  buyAmount,
   limitBuyAmount,
   settings,
   quote: liveQuote,
@@ -56,28 +61,56 @@ export function ReviewModal({
   const [quote] = useState(liveQuote)
   const { step, market, limit } = useTradeExecutor()
   const toast = useToast()
-  const sellAtoms = toAtoms(sellAmount, sellToken.decimals)
+
+  // The sell the order actually spends: the order's signed sell amount for a market
+  // swap (exact when selling, the quoted max when buying), or the user's amount for limit.
+  const sellAtoms =
+    mode === 'market' && quote ? quote.amountsAndCosts.amountsToSign.sellAmount : toAtoms(sellAmount, sellToken.decimals)
   const needsApproval = useNeedsApproval(sellToken.address, sellAtoms, sellToken.native === true)
 
   const pending = step !== 'idle' || market.isPending || limit.isPending
 
-  // Resolve the settings once: a limit order has no quote to suggest from, so it
-  // falls back to the default slippage; a market swap shows the SDK's suggestion.
   const manualBps = manualSlippageBps(settings)
   const receiver = resolvedReceiver(settings)
   const validFor = validForSeconds(settings, mode)
-  // A limit order's buy amount is the exact floor, so slippage applies to swaps only.
+  // Slippage applies to swaps only; a limit order's buy amount is the exact floor.
   const displaySlippageBps = manualBps ?? quote?.suggestedSlippageBps
   const slippageAuto = mode === 'market' && settings.slippage.mode === 'auto'
 
-  const buyDisplay =
+  // The fixed side is the user's exact input; the other side is the SDK's estimate.
+  const buyIsExact = mode === 'market' && side === 'buy'
+  const sellLegLabel = buyIsExact ? 'You sell (expected)' : 'You sell'
+  const sellLegAmount =
+    buyIsExact && quote
+      ? formatAmount(quote.amountsAndCosts.afterPartnerFees.sellAmount, sellToken.decimals)
+      : sellAmount
+  const buyLegLabel =
+    mode === 'limit' ? 'You receive (at limit)' : buyIsExact ? 'You receive' : 'You receive (expected)'
+  const buyLegAmount =
+    mode === 'limit'
+      ? limitBuyAmount
+      : buyIsExact
+        ? buyAmount
+        : quote
+          ? formatAmount(quote.amountsAndCosts.afterPartnerFees.buyAmount, buyToken.decimals)
+          : ''
+
+  // The slippage-protected bound flips with the side: a floor on the buy when
+  // selling, a ceiling on the sell when buying. Limit uses its exact buy floor.
+  const bound =
     mode === 'market' && quote
-      ? formatAmount(quote.amountsAndCosts.afterPartnerFees.buyAmount, buyToken.decimals)
-      : limitBuyAmount
-  const minReceived =
-    mode === 'market' && quote
-      ? formatAmount(quote.amountsAndCosts.afterSlippage.buyAmount, buyToken.decimals)
-      : limitBuyAmount
+      ? side === 'sell'
+        ? {
+            label: 'Minimum received',
+            amount: formatAmount(quote.amountsAndCosts.afterSlippage.buyAmount, buyToken.decimals),
+            symbol: buyToken.symbol,
+          }
+        : {
+            label: 'Maximum sold',
+            amount: formatAmount(quote.amountsAndCosts.afterSlippage.sellAmount, sellToken.decimals),
+            symbol: sellToken.symbol,
+          }
+      : { label: 'Minimum received', amount: limitBuyAmount, symbol: buyToken.symbol }
 
   function onError(error: unknown) {
     const ui = toUiError(error)
@@ -135,9 +168,9 @@ export function ReviewModal({
         <div className="review-leg">
           <TokenLogo token={sellToken} />
           <div>
-            <small>You sell</small>
+            <small>{sellLegLabel}</small>
             <strong>
-              {sellAmount} {sellToken.symbol}
+              {sellLegAmount} {sellToken.symbol}
             </strong>
           </div>
         </div>
@@ -145,18 +178,18 @@ export function ReviewModal({
         <div className="review-leg">
           <TokenLogo token={buyToken} />
           <div>
-            <small>{mode === 'market' ? 'You receive (expected)' : 'You receive (at limit)'}</small>
+            <small>{buyLegLabel}</small>
             <strong>
-              {buyDisplay} {buyToken.symbol}
+              {buyLegAmount} {buyToken.symbol}
             </strong>
           </div>
         </div>
 
         <dl className="review-details">
           <div>
-            <dt>Minimum received</dt>
+            <dt>{bound.label}</dt>
             <dd>
-              {minReceived} {buyToken.symbol}
+              {bound.amount} {bound.symbol}
             </dd>
           </div>
           {mode === 'market' && quote ? (

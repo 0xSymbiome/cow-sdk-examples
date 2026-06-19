@@ -39,7 +39,11 @@ export function SwapCard() {
   const [sellSel, setSellSel] = useState<TokenInfo>()
   const [buySel, setBuySel] = useState<TokenInfo>()
   const [sellAmount, setSellAmount] = useState('')
+  const [buyAmount, setBuyAmount] = useState('')
   const [limitBuyAmount, setLimitBuyAmount] = useState('')
+  // Which side the user fixed: 'sell' = exact-sell (the SDK quotes the buy), 'buy' =
+  // exact-buy (the SDK quotes the sell). Editing a field sets it; market mode only.
+  const [exactSide, setExactSide] = useState<Side>('sell')
   const [settings, setSettings] = useState<SwapSettings>(DEFAULT_SETTINGS)
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [picking, setPicking] = useState<Side>()
@@ -76,6 +80,7 @@ export function SwapCard() {
 
   function setMax() {
     if (!sellToken || sellBalance === undefined) return
+    setExactSide('sell')
     if (sellToken.native) {
       // Leave a small reserve so the eth-flow transaction still has gas.
       const reserve = BigInt(toAtoms('0.001', 18))
@@ -88,6 +93,11 @@ export function SwapCard() {
 
   const wrongNetwork = chainId !== undefined && !isSupportedChain(chainId)
 
+  // Native sells go through eth-flow, which is sell-exact, so buy-side is offered
+  // only for ERC-20 sells. `side` is the effective exact side after that guard.
+  const canBuySide = mode === 'market' && sellToken !== undefined && !sellToken.native
+  const side: Side = canBuySide ? exactSide : 'sell'
+
   // Resolve the settings into order knobs once. Auto leaves `slippageBps` unset so
   // the SDK applies (and reports) its own suggestion; the lifetime and any custom
   // recipient flow into every quote so the displayed amounts already reflect them.
@@ -96,33 +106,50 @@ export function SwapCard() {
   const validFor = validForSeconds(settings, mode)
   const recipientIncomplete = recipientPending(settings)
 
+  // The fixed side drives the quote: its token + amount become `kind` + `amount`.
+  const exactToken = side === 'sell' ? sellToken : buyToken
+  const exactAmount = side === 'sell' ? sellAmount : buyAmount
+
   const swapParams: SwapParametersInput | null = useMemo(() => {
-    if (mode !== 'market' || !sellToken || !buyToken || account === undefined) return null
-    if (!isPositiveAmount(sellAmount, sellToken.decimals)) return null
+    if (mode !== 'market' || !sellToken || !buyToken || account === undefined || !exactToken) return null
+    if (!isPositiveAmount(exactAmount, exactToken.decimals)) return null
     // The SDK requires an owner for quote-only flows; it builds the order-to-sign
     // payload for the connected account.
     return {
-      kind: 'sell',
+      kind: side,
       sellToken: sellToken.address,
       buyToken: buyToken.address,
-      amount: toAtoms(sellAmount, sellToken.decimals),
+      amount: toAtoms(exactAmount, exactToken.decimals),
       validFor,
       ...(slippageParam !== undefined ? { slippageBps: slippageParam } : {}),
       ...(receiver !== undefined ? { receiver } : {}),
       owner: account,
     }
-  }, [mode, sellToken, buyToken, account, sellAmount, validFor, slippageParam, receiver])
+  }, [mode, sellToken, buyToken, account, side, exactToken, exactAmount, validFor, slippageParam, receiver])
 
   // Pause quote polling while the review modal is open so the amounts cannot
   // change between the user reading them and signing.
   const quote = useQuote(chainId, swapParams, !reviewing)
+  const amounts = quote.data?.amountsAndCosts
 
-  const buyDisplay =
-    mode === 'market'
-      ? quote.data && buyToken
-        ? formatAmount(quote.data.amountsAndCosts.afterPartnerFees.buyAmount, buyToken.decimals)
-        : ''
-      : limitBuyAmount
+  // The non-fixed field shows the SDK's estimate (after fees, before the slippage buffer).
+  const estimatedSell = amounts && sellToken ? formatAmount(amounts.afterPartnerFees.sellAmount, sellToken.decimals) : ''
+  const estimatedBuy = amounts && buyToken ? formatAmount(amounts.afterPartnerFees.buyAmount, buyToken.decimals) : ''
+  const sellFieldValue = mode === 'limit' ? sellAmount : side === 'sell' ? sellAmount : estimatedSell
+  const buyFieldValue = mode === 'limit' ? limitBuyAmount : side === 'buy' ? buyAmount : estimatedBuy
+
+  function onSellInput(value: string) {
+    setSellAmount(value)
+    if (mode === 'market') setExactSide('sell')
+  }
+  function onBuyInput(value: string) {
+    if (mode === 'limit') {
+      setLimitBuyAmount(value)
+    } else {
+      setBuyAmount(value)
+      setExactSide('buy')
+    }
+  }
 
   // What we show as the slippage: the manual value, or the SDK's Auto suggestion.
   const shownSlippageBps = slippageParam ?? quote.data?.suggestedSlippageBps
@@ -131,18 +158,29 @@ export function SwapCard() {
     setSellSel(buyToken)
     setBuySel(sellToken)
     setSellAmount('')
+    setBuyAmount('')
     setLimitBuyAmount('')
+    setExactSide('sell')
   }
 
-  const amountEntered = isPositiveAmount(sellAmount, sellToken?.decimals ?? 18)
+  const amountEntered = isPositiveAmount(exactAmount, exactToken?.decimals ?? 18)
+
+  // The sell the order will actually spend: the exact amount when selling, the
+  // quoted maximum (post-slippage) when buying. Drives the balance check + approval.
+  const orderSellAtoms =
+    mode !== 'market'
+      ? undefined
+      : side === 'sell'
+        ? amountEntered && sellToken
+          ? toAtoms(sellAmount, sellToken.decimals)
+          : undefined
+        : amounts?.amountsToSign.sellAmount
+
   // Require the balance only for a market swap. A limit order is a standing intent
   // the user may fund later, so it is allowed above the current balance.
   const insufficientBalance =
-    mode === 'market' &&
-    amountEntered &&
-    sellToken !== undefined &&
-    sellBalance !== undefined &&
-    BigInt(toAtoms(sellAmount, sellToken.decimals)) > BigInt(sellBalance)
+    orderSellAtoms !== undefined && sellBalance !== undefined && BigInt(orderSellAtoms) > BigInt(sellBalance)
+
   const limitReady =
     mode === 'limit' && amountEntered && isPositiveAmount(limitBuyAmount, buyToken?.decimals ?? 18)
   const marketReady = mode === 'market' && Boolean(quote.data)
@@ -152,6 +190,23 @@ export function SwapCard() {
     !insufficientBalance &&
     !recipientIncomplete &&
     (marketReady || limitReady)
+
+  // The slippage-protected bound flips with the side: a floor on the buy when
+  // selling, a ceiling on the sell when buying.
+  const bound =
+    amounts && sellToken && buyToken
+      ? side === 'sell'
+        ? {
+            label: 'Minimum received',
+            amount: formatAmount(amounts.afterSlippage.buyAmount, buyToken.decimals),
+            symbol: buyToken.symbol,
+          }
+        : {
+            label: 'Maximum sold',
+            amount: formatAmount(amounts.afterSlippage.sellAmount, sellToken.decimals),
+            symbol: sellToken.symbol,
+          }
+      : null
 
   return (
     <section className="card swap-card">
@@ -177,11 +232,12 @@ export function SwapCard() {
       <TokenField
         label="Sell"
         token={sellToken}
-        amount={sellAmount}
+        amount={sellFieldValue}
         editable
+        loading={mode === 'market' && side === 'buy' && quote.isFetching && !quote.data}
         balanceAtoms={sellBalance}
         onMax={setMax}
-        onAmount={setSellAmount}
+        onAmount={onSellInput}
         onPick={() => setPicking('sell')}
       />
 
@@ -194,11 +250,11 @@ export function SwapCard() {
       <TokenField
         label={mode === 'limit' ? 'Buy (at limit price)' : 'Buy'}
         token={buyToken}
-        amount={buyDisplay}
-        editable={mode === 'limit'}
-        loading={mode === 'market' && quote.isFetching && !quote.data}
+        amount={buyFieldValue}
+        editable={mode === 'limit' || canBuySide}
+        loading={mode === 'market' && side === 'sell' && quote.isFetching && !quote.data}
         balanceAtoms={buyBalance}
-        onAmount={setLimitBuyAmount}
+        onAmount={onBuyInput}
         onPick={() => setPicking('buy')}
       />
 
@@ -225,10 +281,11 @@ export function SwapCard() {
         <p className="error-text">{toUiError(quote.error).detail}</p>
       ) : null}
 
-      {mode === 'market' && quote.data && sellToken && buyToken ? (
+      {mode === 'market' && quote.data && bound && sellToken ? (
         <QuoteSummary
-          minReceived={formatAmount(quote.data.amountsAndCosts.afterSlippage.buyAmount, buyToken.decimals)}
-          buySymbol={buyToken.symbol}
+          boundLabel={bound.label}
+          boundAmount={bound.amount}
+          boundSymbol={bound.symbol}
           networkCost={formatAmount(
             quote.data.amountsAndCosts.costs.networkFee.amountInSellCurrency,
             sellToken.decimals,
@@ -285,9 +342,11 @@ export function SwapCard() {
       {reviewing && sellToken && buyToken ? (
         <ReviewModal
           mode={mode}
+          side={side}
           sellToken={sellToken}
           buyToken={buyToken}
           sellAmount={sellAmount}
+          buyAmount={buyAmount}
           limitBuyAmount={limitBuyAmount}
           settings={settings}
           quote={mode === 'market' ? quote.data : undefined}
@@ -295,7 +354,9 @@ export function SwapCard() {
           onDone={() => {
             setReviewing(false)
             setSellAmount('')
+            setBuyAmount('')
             setLimitBuyAmount('')
+            setExactSide('sell')
           }}
         />
       ) : null}
@@ -373,8 +434,9 @@ function TokenField({
 }
 
 interface QuoteSummaryProps {
-  minReceived: string
-  buySymbol: string
+  boundLabel: string
+  boundAmount: string
+  boundSymbol: string
   networkCost: string
   sellSymbol: string
   slippageBps: number | undefined
@@ -383,8 +445,9 @@ interface QuoteSummaryProps {
 }
 
 function QuoteSummary({
-  minReceived,
-  buySymbol,
+  boundLabel,
+  boundAmount,
+  boundSymbol,
   networkCost,
   sellSymbol,
   slippageBps,
@@ -394,9 +457,9 @@ function QuoteSummary({
   return (
     <dl className="quote-summary">
       <div>
-        <dt>Minimum received</dt>
+        <dt>{boundLabel}</dt>
         <dd>
-          {minReceived} {buySymbol}
+          {boundAmount} {boundSymbol}
         </dd>
       </div>
       <div>
