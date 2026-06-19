@@ -795,6 +795,8 @@ body {
   gap: 10px;
 }
 .order-pair {
+  flex: 1;
+  min-width: 0;
   font-variant-numeric: tabular-nums;
   font-size: 14px;
 }
@@ -826,6 +828,47 @@ body {
   margin: 6px 0 0;
   padding-left: 16px;
   font-variant-numeric: tabular-nums;
+}
+.orders-tabs {
+  margin-bottom: 12px;
+}
+.bulk-bar {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  margin-bottom: 12px;
+  padding: 8px 12px;
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  background: var(--surface-2);
+  font-size: 13px;
+}
+.order-check {
+  flex-shrink: 0;
+  width: 16px;
+  height: 16px;
+  accent-color: var(--accent);
+  cursor: pointer;
+}
+.receipt-fills-head {
+  margin: 18px 0 0;
+  font-size: 14px;
+  font-weight: 600;
+}
+.trade-list {
+  list-style: none;
+  margin: 8px 0 0;
+  padding: 0;
+  display: grid;
+  gap: 8px;
+}
+.trade-list li {
+  font-variant-numeric: tabular-nums;
+  font-size: 13px;
+}
+.trade-list .arrow {
+  color: var(--muted);
 }
 
 /* Wallet picker */

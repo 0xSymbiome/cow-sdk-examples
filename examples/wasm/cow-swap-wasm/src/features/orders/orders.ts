@@ -73,24 +73,32 @@ export function useCompetition(chainId: number | undefined, orderUid: string, en
   })
 }
 
-/** Sign and submit an order cancellation (typed-data signed, then posted). */
-export function useCancelOrder() {
+/** The fills (trades) for a single order, fetched on demand for its receipt. */
+export function useTrades(chainId: number | undefined, orderUid: string, enabled: boolean) {
+  return useQuery({
+    queryKey: ['trades', chainId, orderUid],
+    enabled: enabled && chainId !== undefined,
+    queryFn: () =>
+      getOrderBookClient(chainId as number)
+        .getTrades({ orderUid })
+        .then((envelope) => envelope.value),
+  })
+}
+
+/** Sign and submit one or more order cancellations as a single signed request. */
+export function useCancelOrders() {
   const { walletClient, account, chainId } = useWallet()
   const queryClient = useQueryClient()
   return useMutation({
-    mutationFn: async (orderUid: string) => {
+    mutationFn: async (orderUids: string[]) => {
       if (!walletClient || account === undefined || chainId === undefined) {
         throw new Error('Connect a wallet first')
       }
       const signed = (
-        await signCancellationWithTypedDataSigner(
-          [orderUid],
-          chainId,
-          typedDataSigner(walletClient, account),
-        )
+        await signCancellationWithTypedDataSigner(orderUids, chainId, typedDataSigner(walletClient, account))
       ).value
       await getOrderBookClient(chainId).cancelOrders(signed)
-      return orderUid
+      return orderUids
     },
     onSuccess: () => {
       void queryClient.invalidateQueries({ queryKey: ['orders', chainId, account] })
