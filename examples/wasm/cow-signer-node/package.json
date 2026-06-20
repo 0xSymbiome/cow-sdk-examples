@@ -11,7 +11,7 @@
     "test": "pnpm run build && vitest run"
   },
   "dependencies": {
-    "@symbiome-forge/cow-sdk-wasm": "0.1.0-alpha.6",
+    "@symbiome-forge/cow-sdk-wasm": "0.1.0-alpha.8",
     "viem": "2.52.2"
   },
   "devDependencies": {
