@@ -3,4 +3,4 @@ allowBuilds:
   sharp: true
   workerd: true
 minimumReleaseAgeExclude:
-  - '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.5'
+  - '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.8'

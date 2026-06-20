@@ -64,14 +64,14 @@ logs one structured line per outbound request and **still delegates to the platf
 ### Relaying upstream backoff
 
 The SDK retries transient orderbook failures internally; when it exhausts that
-budget it surfaces a typed `CowError`. The `orderbook` variant carries
-`retryable` and an optional `retryAfterMs` (parsed from the orderbook's
-`Retry-After` header), so the gateway can relay a retryable failure as a `503`
-with a `Retry-After` header instead of hiding it behind a generic `502`:
+budget it throws a typed `CowError`. The package's `isRetryable` and `retryAfterMs`
+helpers read the SDK's own verdict (and the `Retry-After` it parsed), so the
+gateway can relay a retryable failure as a `503` with a `Retry-After` header
+instead of hiding it behind a generic `502`:
 
 ```ts
 catch (error) {
-  // 503 + Retry-After when error.kind === "orderbook" && error.retryable
+  // isRetryable(error) -> 503 + Retry-After; anything else -> 502.
   return upstreamErrorResponse(error);
 }
 ```

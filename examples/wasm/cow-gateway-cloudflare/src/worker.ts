@@ -1,7 +1,10 @@
 import initialize, {
   OrderBookClient,
+  isCowError,
+  isRetryable,
+  normalizeError,
+  retryAfterMs,
   supportedChainIds,
-  type CowError,
   type HttpTransportConfig,
   type OrderQuoteRequestInput
 } from "@symbiome-forge/cow-sdk-wasm/trading/edge";
@@ -87,51 +90,30 @@ function gatewayTransport(env: WorkerEnv): HttpTransportConfig {
   return { kind: "fetch" };
 }
 
-// The SDK throws its `CowError` discriminated union, which crosses the wasm
-// boundary as a plain object (not an `Error` instance). The package re-exports
-// the `CowError` type, so the gateway narrows the caught value to the variant it
-// cares about — the `orderbook` retry surface (`retryable` / `retryAfterMs`) —
-// with a small runtime type guard rather than restating the shape by hand.
-type OrderbookError = Extract<CowError, { kind: "orderbook" }>;
-
-function isRetryableOrderbookError(value: unknown): value is OrderbookError {
-  return (
-    typeof value === "object" &&
-    value !== null &&
-    (value as { kind?: unknown }).kind === "orderbook" &&
-    (value as { retryable?: unknown }).retryable === true
-  );
-}
-
-function errorMessage(value: unknown): string {
-  if (value instanceof Error) {
-    return value.message;
-  }
-  if (
-    typeof value === "object" &&
-    value !== null &&
-    typeof (value as { message?: unknown }).message === "string"
-  ) {
-    return (value as { message: string }).message;
-  }
-  return "upstream quote request failed";
-}
+// Every SDK call throws a `CowError` — a real `Error` subclass that also forms a
+// discriminated union keyed by `kind`. The package ships the retry-verdict helpers
+// (`isRetryable`, `retryAfterMs`), so the gateway reads the SDK's own
+// classification instead of restating the orderbook error shape by hand.
 
 // Maps an SDK failure to a gateway response. The SDK already retried the request
-// internally and exhausted its budget, so an orderbook error it reports as
-// `retryable` is transient (a rate limit or a server-fault status): the gateway
-// relays it as a 503 with a `Retry-After` header derived from the upstream
-// `retryAfterMs` hint when present, and lets the caller back off. Everything
-// else is a failure that resubmitting unchanged will not fix, so it stays a 502.
+// internally and exhausted its budget, so a failure it still classifies as
+// retryable is transient (a rate limit or a server-fault status): the gateway
+// relays it as a 503 with a `Retry-After` header derived from the SDK's
+// `retryAfterMs` hint when present, and lets the caller back off. Everything else
+// is a failure that resubmitting unchanged will not fix, so it stays a 502.
 export function upstreamErrorResponse(error: unknown): Response {
-  if (isRetryableOrderbookError(error)) {
+  // Normalize a foreign throw or a plain wire object into a `CowError` so the
+  // verdict and message read the same way no matter how the failure arrived.
+  const cowError = isCowError(error) ? error : normalizeError(error);
+  if (isRetryable(cowError)) {
     const headers: Record<string, string> = {};
-    if (typeof error.retryAfterMs === "number") {
-      headers["retry-after"] = String(Math.ceil(error.retryAfterMs / 1000));
+    const afterMs = retryAfterMs(cowError);
+    if (afterMs !== undefined) {
+      headers["retry-after"] = String(Math.ceil(afterMs / 1000));
     }
-    return Response.json({ error: error.message, retryable: true }, { status: 503, headers });
+    return Response.json({ error: cowError.message, retryable: true }, { status: 503, headers });
   }
-  return Response.json({ error: errorMessage(error) }, { status: 502 });
+  return Response.json({ error: cowError.message }, { status: 502 });
 }
 
 export function createOrderBookClient(env: WorkerEnv): OrderBookClient {
