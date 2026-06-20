@@ -60,10 +60,7 @@ async fn inspect_inner(config: &BotConfig, findings: &FindingsStream) -> CmdResu
     let (visible, active) = match orderbook.orders(&query).await {
         Ok(orders) => {
             // Active = still live — typed via `OrderStatus::is_open()`.
-            let active = orders
-                .iter()
-                .filter(|order| order.status.is_open())
-                .count();
+            let active = orders.iter().filter(|order| order.status.is_open()).count();
             info!(visible = orders.len(), active, "owner orders");
             (orders.len(), active)
         }
