@@ -280,7 +280,7 @@ impl Daemon {
             if let Ok(order) = self.orderbook.order(uid).cancel_with(cancel).await
                 && order.status.is_terminal()
             {
-                let filled = format!("{:?}", order.status) == "Fulfilled";
+                let filled = order.status.is_fulfilled();
                 info!(order_uid = %uid.to_hex_string(), status = ?order.status, filled, "order terminal");
                 return filled;
             }

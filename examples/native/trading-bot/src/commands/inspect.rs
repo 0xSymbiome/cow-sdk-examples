@@ -59,10 +59,10 @@ async fn inspect_inner(config: &BotConfig, findings: &FindingsStream) -> CmdResu
     let query = OrdersQuery::new(wallet.owner).with_limit(10);
     let (visible, active) = match orderbook.orders(&query).await {
         Ok(orders) => {
-            // Active = not terminal — typed via `OrderStatus::is_terminal()`.
+            // Active = still live — typed via `OrderStatus::is_open()`.
             let active = orders
                 .iter()
-                .filter(|order| !order.status.is_terminal())
+                .filter(|order| order.status.is_open())
                 .count();
             info!(visible = orders.len(), active, "owner orders");
             (orders.len(), active)
