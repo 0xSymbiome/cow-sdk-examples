@@ -3,8 +3,9 @@
 //! One iteration exercises the full lifecycle a market-taking bot touches:
 //!
 //! 1. **Quote** — `Trading::quote_only`.
-//! 2. **Sign + post** — `Trading::post_swap_order` (market-take) or
-//!    `post_limit_order` (limit-make): uploads app-data, signs EIP-712, posts.
+//! 2. **Sign + post** — `Trading::post_swap_order_from_quote` (market-take, reusing
+//!    the step-1 quote) or `post_limit_order` (limit-make): uploads app-data, signs
+//!    EIP-712, posts.
 //! 3. **Persist** — append the UID to `state/open-orders.jsonl`.
 //! 4. **Poll** — `OrderbookApi::order` until terminal or the budget expires.
 //! 5. **Cancel** — `Trading::offchain_cancel_order` on whatever is still open.
@@ -165,10 +166,11 @@ impl Engine {
             .with_owner(self.owner)
             .with_slippage_bps(50);
 
-        // 1. Quote.
+        // 1. Quote once. The market path posts this exact quote, so the order the
+        // orderbook accepts matches the amounts logged here — no second quote, no drift.
         let quote = self
             .trading
-            .quote_only(trade.clone(), None)
+            .quote_only(trade, None)
             .cancel_with(cancel)
             .await
             .map_err(|err| {
@@ -191,10 +193,10 @@ impl Engine {
         let posted = match args.strategy {
             Strategy::MarketTake => self
                 .trading
-                .post_swap_order(trade, &self.signer, None)
+                .post_swap_order_from_quote(&quote, &self.signer, None)
                 .cancel_with(cancel)
                 .await
-                .map_err(|err| post_error("post_swap_order", err, cancel))?,
+                .map_err(|err| post_error("post_swap_order_from_quote", err, cancel))?,
             Strategy::LimitMake => {
                 // Ask 1% above the quoted price so the order rests long enough to
                 // observe its lifecycle. The 1% crosses the typed `Amount` <-> U256

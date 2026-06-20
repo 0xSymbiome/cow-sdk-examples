@@ -4,7 +4,7 @@
 //! repairs them idempotently:
 //!  * the vault-relayer WETH allowance is at least the configured target
 //!    (`approval_transaction` + wait), and
-//!  * the WETH balance is at least the floor (wrap ETH via `wrap_interaction`).
+//!  * the WETH balance is at least the floor (wrap ETH via `wrap_transaction`).
 //!
 //! When an invariant already holds the check is a read-only no-op, so the
 //! treasury is safe to run every tick. Repairs send real transactions and
@@ -13,10 +13,9 @@
 
 use alloy_primitives::U256;
 use cow_sdk::alloy::AlloyClientSignerHandle;
-use cow_sdk::contracts::wrap_interaction;
-use cow_sdk::core::{Amount, HexData, TransactionRequest};
+use cow_sdk::core::Amount;
 use cow_sdk::orderbook::CowEnv;
-use cow_sdk::trading::{ApprovalParams, WaitOptions, approval_transaction};
+use cow_sdk::trading::{ApprovalParams, WaitOptions, approval_transaction, wrap_transaction};
 use tracing::{info, warn};
 
 use crate::config::{self, BotConfig};
@@ -113,16 +112,12 @@ impl Treasury {
             warn!(weth_wei = %balance, "treasury: WETH below floor, COW_BOT_WRITE!=yes — skipping wrap");
             return Ok(());
         }
-        // Wrap exactly the deficit so the balance reaches the floor.
+        // Wrap exactly the deficit so the balance reaches the floor. The SDK
+        // resolves the chain's wrapped-native token and builds the deposit
+        // transaction; no manual interaction assembly.
         let deficit = floor - *balance.as_u256();
         info!(deficit_wei = %deficit, "treasury: wrapping ETH -> WETH to reach floor");
-        let interaction = wrap_interaction(config::WETH, Amount::from_u256(deficit));
-        let tx = TransactionRequest::new(
-            Some(interaction.target),
-            Some(HexData::from_bytes(interaction.call_data.to_vec())),
-            Some(interaction.value),
-            None,
-        );
+        let tx = wrap_transaction(config.chain_id, Amount::from_u256(deficit));
         wallet
             .submit_and_wait(signer, &tx, WaitOptions::inclusion_default())
             .await?;
