@@ -3,7 +3,7 @@
 A hosted, browser-based CoW Protocol swap interface built on the **`trading`
 flavor** of the TypeScript-callable WASM package. It runs with **no backend**: the
 Rust SDK, compiled to WebAssembly, performs *all* protocol logic — quoting, slippage suggestion, order signing
-payloads, posting, tracking, surplus, solver competition, and cancellation
+payloads, posting, tracking, surplus, solver competition, native wrap/unwrap, and cancellation
 — straight from the browser.
 
 The division of labor is the lesson. [viem](https://viem.sh) owns the wallet, RPC,
@@ -41,13 +41,15 @@ supported networks are live.
 | Order expiry (swap minutes, limit days) | `validFor` |
 | ERC-20 approval — exact or unlimited allowance | `getCowProtocolAllowance` + `buildApprovalTx` |
 | Native-currency sells (on-chain eth-flow) | `buildSellNativeCurrencyTxFromQuote` |
+| Wrap / unwrap native currency (ETH ↔ WETH) | `wrappedNativeToken` + `buildWrapTx` / `buildUnwrapTx` |
 | Order tracking with live status | `OrderBookClient.getOrders` |
 | Surplus captured for you | `getTotalSurplus` |
 | Solver competition per order | `getOrderCompetitionStatus` |
 | Cancellation | `signCancellationWithTypedDataSigner` + `cancelOrders` |
 | Multi-chain network switcher | `supportedChainIds` |
-| Typed, specific error states | the thrown `CowError` taxonomy |
-| "Under the hood" inspector | `orderTypedData`, `wasmVersion` |
+| Typed, specific error states | the thrown `CowError` + `isCowError` / `isRetryable` / `isUserRejection` / `retryAfterMs` |
+| Transient-failure retry with backoff | `withRetry` (honours the SDK's retryable verdict and `Retry-After`) |
+| "Under the hood" inspector | `QuoteResultsDto.orderTypedData`, `wasmVersion` |
 
 Every row is exercised by code in `src/`; nothing here is illustrative-only.
 
@@ -101,14 +103,24 @@ surplus and solver competition.
   its own diagnostics (for example `ObjectMultiplex` notices or an `EventEmitter`
   listener warning). Those come from the extension, not this app, and are safe to
   ignore.
-- **Errors are states, not strings.** SDK failures throw a typed `CowError`
-  discriminated union; the app maps each variant (`walletRequest` 4001 →
-  soft-cancel, `orderbook` → its `category`/`retryable` verdict, …) to a specific
-  UI state — see [`src/lib/cow-errors.ts`](src/lib/cow-errors.ts).
-- **Scope.** Market and limit swaps, ERC-20 approvals, buying native currency, and
-  selling native currency (via CoW's on-chain eth-flow) are all supported. Advanced
-  order types (TWAP, hooks) are outside the current WASM surface and are
-  deliberately not shown rather than faked.
+- **Errors are states, not strings.** Every SDK call throws a `CowError` — a real
+  `Error` subclass that is also a discriminated union keyed by `kind`. The SDK
+  classifies the failure; the app reads that verdict through the shipped helpers
+  (`isUserRejection` → soft-cancel a declined signature, `isRetryable` /
+  `retryAfterMs` → the transient-retry budget) and refines an orderbook rejection
+  by its `errorType` tag, telling `InsufficientAllowance` (approve the token) from
+  `InsufficientBalance` (add funds) where the coarse `category` cannot. See
+  [`src/lib/cow-errors.ts`](src/lib/cow-errors.ts).
+- **Transient failures retry themselves.** The quote fetch runs through `withRetry`,
+  which retries only the failures the SDK classifies as retryable and waits the
+  server's `Retry-After` when present — a rate-limit or 5xx blip recovers without a
+  visible error, while a rejection decided on the request is surfaced at once. The
+  inspector reports any retry as it happens.
+- **Scope.** Market and limit swaps, ERC-20 approvals, buying native currency,
+  selling native currency (via CoW's on-chain eth-flow), and wrapping or unwrapping
+  native currency (ETH ↔ WETH) are all supported. Advanced order types (TWAP, hooks)
+  are outside the current WASM surface and are deliberately not shown rather than
+  faked.
 - **Deployment.** `pnpm build` emits a static bundle in `dist/` with no server
   component. `base: './'` keeps assets portable across subpaths, so this repo
   publishes it to GitHub Pages at

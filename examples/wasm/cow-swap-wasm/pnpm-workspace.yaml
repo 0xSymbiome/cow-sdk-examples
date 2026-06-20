@@ -2,4 +2,4 @@ allowBuilds:
   '@swc/core': true
   esbuild: true
 minimumReleaseAgeExclude:
-  - '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.6'
+  - '@symbiome-forge/cow-sdk-wasm@0.1.0-alpha.8'

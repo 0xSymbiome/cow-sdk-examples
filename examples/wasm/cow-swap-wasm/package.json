@@ -14,7 +14,7 @@
     "test": "pnpm run build && vitest run"
   },
   "dependencies": {
-    "@symbiome-forge/cow-sdk-wasm": "0.1.0-alpha.6",
+    "@symbiome-forge/cow-sdk-wasm": "0.1.0-alpha.8",
     "@tanstack/react-query": "^5.101.0",
     "react": "^19.2.7",
     "react-dom": "^19.2.7",

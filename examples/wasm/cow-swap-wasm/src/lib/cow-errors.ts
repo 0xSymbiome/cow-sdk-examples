@@ -1,7 +1,20 @@
-import type { CowError } from '@symbiome-forge/cow-sdk-wasm/trading'
+import {
+  isCowError,
+  isRetryable,
+  isUserRejection,
+  retryAfterMs,
+  type OrderBookErrorType,
+  type OrderBookRejectionCategory,
+} from '@symbiome-forge/cow-sdk-wasm/trading'
 
-// The SDK throws a normalized, discriminated `CowError` (a plain object, not an
-// `Error`). This maps each variant to a presentational shape the UI can render.
+// Every SDK call throws a `CowError` — a real `Error` subclass that is also a
+// discriminated union keyed by `kind`. The SDK already classifies the failure
+// (`isRetryable`, `isUserRejection`, the `Retry-After` it parsed, the services
+// `errorType` tag), so this module only maps that verdict onto presentational
+// UI state. The classification logic lives in the SDK, not here.
+
+/** The next step the user can take to clear a recoverable orderbook rejection. */
+export type UiAction = 'approve' | 'fund' | 'requote'
 
 export interface UiError {
   title: string
@@ -9,20 +22,15 @@ export interface UiError {
   kind: string
   retryable: boolean
   retryAfterMs?: number
-  /** A user-initiated rejection (declined signature) — shown softly, not as a failure. */
+  /** A user-initiated rejection (declined signature or cancelled flow) — shown softly. */
   userRejected: boolean
-}
-
-export function isCowError(value: unknown): value is CowError {
-  return (
-    typeof value === 'object' &&
-    value !== null &&
-    'kind' in value &&
-    'schemaVersion' in value
-  )
+  /** Set when the orderbook's `errorType` names a concrete fix the user can take. */
+  action?: UiAction
 }
 
 export function toUiError(error: unknown): UiError {
+  // `isCowError` is the SDK's own `instanceof CowError`. A non-SDK fault (e.g. a
+  // wallet adapter throwing) is shown verbatim rather than guessed at.
   if (!isCowError(error)) {
     return {
       title: 'Unexpected error',
@@ -33,86 +41,70 @@ export function toUiError(error: unknown): UiError {
     }
   }
 
+  // The SDK computes these verdicts; the UI does not re-derive them.
+  const base = {
+    kind: error.kind,
+    retryable: isRetryable(error),
+    userRejected: isUserRejection(error),
+  }
+
+  // `switch (error.kind)` narrows the union to the typed per-kind fields.
   switch (error.kind) {
-    case 'walletRequest': {
-      const declined = error.code === 4001
+    case 'walletRequest':
       return {
-        title: declined ? 'Signature declined' : 'Wallet request failed',
+        ...base,
+        title: base.userRejected ? 'Signature declined' : 'Wallet request failed',
         detail: error.message,
-        kind: error.kind,
-        retryable: !declined,
-        userRejected: declined,
       }
-    }
     case 'walletTimeout':
       return {
+        ...base,
         title: 'Wallet timed out',
         detail: `No wallet response within ${Math.round(error.timeoutMs / 1000)}s.`,
-        kind: error.kind,
-        retryable: true,
-        userRejected: false,
       }
     case 'unsupportedChain':
       return {
+        ...base,
         title: 'Unsupported network',
         detail: `Chain ${error.chainId} is not supported. Switch to a supported network.`,
-        kind: error.kind,
-        retryable: false,
-        userRejected: false,
       }
-    case 'orderbook':
+    case 'orderbook': {
+      const after = retryAfterMs(error)
+      const action = orderbookAction(error.errorType)
       return {
-        title: orderbookTitle(error.category),
+        ...base,
+        // `errorType` refines the coarse `category`: an allowance failure and a
+        // balance failure both fall under `insufficientFunds`, but only the
+        // former is fixed by an approval — so prefer the tag where it is sharper.
+        title:
+          error.errorType === 'InsufficientAllowance'
+            ? 'Token approval needed'
+            : orderbookTitle(error.category),
         detail: error.message,
-        kind: error.kind,
-        retryable: error.retryable,
-        ...(error.retryAfterMs === undefined ? {} : { retryAfterMs: error.retryAfterMs }),
-        userRejected: false,
+        ...(after === undefined ? {} : { retryAfterMs: after }),
+        ...(action === undefined ? {} : { action }),
       }
+    }
     case 'invalidInput':
       return {
+        ...base,
         title: 'Invalid input',
         detail: error.field ? `${error.field}: ${error.message}` : error.message,
-        kind: error.kind,
-        retryable: false,
-        userRejected: false,
       }
     case 'transport':
-      return {
-        title: 'Network error',
-        detail: error.message,
-        kind: error.kind,
-        retryable: true,
-        userRejected: false,
-      }
+      return { ...base, title: 'Network error', detail: error.message }
+    case 'appData':
+      return { ...base, title: 'App data rejected', detail: error.message }
     case 'signing':
-      return {
-        title: 'Signing failed',
-        detail: error.message,
-        kind: error.kind,
-        retryable: false,
-        userRejected: false,
-      }
+      return { ...base, title: 'Signing failed', detail: error.message }
     case 'cancelled':
-      return {
-        title: 'Cancelled',
-        detail: error.message,
-        kind: error.kind,
-        retryable: false,
-        userRejected: true,
-      }
+      return { ...base, title: 'Cancelled', detail: error.message }
     default:
-      return {
-        title: 'Something went wrong',
-        detail: error.message,
-        kind: error.kind,
-        retryable: false,
-        userRejected: false,
-      }
+      return { ...base, title: 'Something went wrong', detail: error.message }
   }
 }
 
-function orderbookTitle(category: string | undefined): string {
+function orderbookTitle(category: OrderBookRejectionCategory | undefined): string {
   switch (category) {
     case 'insufficientFunds':
       return 'Insufficient balance'
@@ -130,5 +122,23 @@ function orderbookTitle(category: string | undefined): string {
       return 'Service unavailable'
     default:
       return 'Order error'
+  }
+}
+
+// Map the services `errorType` tag — finer than `category` — onto the concrete
+// recovery the UI can offer. Exported so the mapping is unit-tested directly.
+export function orderbookAction(errorType: OrderBookErrorType | undefined): UiAction | undefined {
+  switch (errorType) {
+    case 'InsufficientAllowance':
+      return 'approve'
+    case 'InsufficientBalance':
+    case 'SellAmountDoesNotCoverFee':
+      return 'fund'
+    case 'QuoteNotFound':
+    case 'QuoteNotVerified':
+    case 'InvalidQuote':
+      return 'requote'
+    default:
+      return undefined
   }
 }

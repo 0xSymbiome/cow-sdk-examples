@@ -2,6 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useCallback, useState } from 'react'
 import type { Address, Hex } from 'viem'
 
+import { withRetry } from '@symbiome-forge/cow-sdk-wasm/trading'
 import type {
   LimitTradeParametersInput,
   QuoteResultsDto,
@@ -13,7 +14,7 @@ import type { PublicClient, WalletClient } from 'viem'
 import { QUOTE_REFRESH_INTERVAL_MS } from '../../config'
 import { getOrderBookClient, getTradingClient } from '../../lib/cow'
 import { contractReader, typedDataSigner } from '../../lib/cow-callbacks'
-import { recordQuote } from '../inspector/store'
+import { recordQuote, recordRetry } from '../inspector/store'
 import { useWallet } from '../../wallet/WalletProvider'
 import { MAX_UINT256, type ApprovalChoice } from './settings'
 
@@ -40,8 +41,21 @@ export function useQuote(
     refetchInterval: refetchActive ? QUOTE_REFRESH_INTERVAL_MS : false,
     retry: false,
     queryFn: async () => {
-      const quote = (await getTradingClient(chainId as number).getQuote(params as SwapParametersInput))
-        .value
+      // Retry only a transient orderbook failure — on the SDK's own `isRetryable`
+      // verdict and any `Retry-After` it parsed — under a tight, stale-quote-aware
+      // budget. A rejection decided on the request's merits is never retried.
+      const quote = await withRetry(
+        () =>
+          getTradingClient(chainId as number)
+            .getQuote(params as SwapParametersInput)
+            .then((envelope) => envelope.value),
+        {
+          retries: 2,
+          baseDelayMs: 400,
+          maxDelayMs: 2_000,
+          onRetry: (attempt, error, delayMs) => recordRetry({ attempt, delayMs, reason: error.message }),
+        },
+      )
       recordQuote(quote)
       return quote
     },

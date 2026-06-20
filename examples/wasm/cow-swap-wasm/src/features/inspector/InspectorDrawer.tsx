@@ -28,7 +28,7 @@ export function InspectorDrawer() {
   const [tab, setTab] = useState<Tab>('summary')
   // Read the SDK version once, after the wasm module is initialized.
   const [sdkVersion] = useState(() => wasmVersion())
-  const { lastQuote } = useInspector()
+  const { lastQuote, lastRetry } = useInspector()
 
   return (
     <>
@@ -60,6 +60,14 @@ export function InspectorDrawer() {
               </a>
             </small>
           </header>
+
+          {lastRetry ? (
+            <p className="inspector-note">
+              The SDK retried a transient orderbook failure — attempt {lastRetry.attempt}, backed off{' '}
+              {lastRetry.delayMs} ms ({lastRetry.reason}). Failures decided on the request are never
+              retried.
+            </p>
+          ) : null}
 
           {lastQuote ? (
             <>

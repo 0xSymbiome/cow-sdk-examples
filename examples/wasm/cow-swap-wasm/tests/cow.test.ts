@@ -1,7 +1,9 @@
 import { describe, expect, it } from 'vitest'
 
+import { CowError } from '@symbiome-forge/cow-sdk-wasm/trading'
+
 import { toCowJsonValue } from '../src/lib/cow-callbacks'
-import { toUiError } from '../src/lib/cow-errors'
+import { orderbookAction, toUiError } from '../src/lib/cow-errors'
 import { formatAmount, fromAtoms, isPositiveAmount, toAtoms } from '../src/lib/format'
 
 describe('toCowJsonValue (ContractReadCallback shape)', () => {
@@ -43,30 +45,46 @@ describe('amount formatting', () => {
 
 describe('toUiError', () => {
   it('treats a user-declined signature as a soft rejection', () => {
-    const ui = toUiError({
-      schemaVersion: 'v1',
-      kind: 'walletRequest',
-      method: 'eth_signTypedData_v4',
-      code: 4001,
-      message: 'User rejected',
-    })
+    const ui = toUiError(
+      new CowError({ kind: 'walletRequest', method: 'eth_signTypedData_v4', code: 4001, message: 'User rejected' }),
+    )
     expect(ui.userRejected).toBe(true)
     expect(ui.title).toBe('Signature declined')
   })
 
   it('surfaces the orderbook retry verdict the SDK computed', () => {
-    const ui = toUiError({
-      schemaVersion: 'v1',
-      kind: 'orderbook',
-      category: 'insufficientFunds',
-      message: 'not enough balance',
-      retryable: false,
-    })
+    const ui = toUiError(
+      new CowError({ kind: 'orderbook', category: 'insufficientFunds', message: 'not enough balance', retryable: false }),
+    )
     expect(ui.title).toBe('Insufficient balance')
     expect(ui.retryable).toBe(false)
   })
 
+  it('refines an allowance rejection past the coarse funds category via errorType', () => {
+    const ui = toUiError(
+      new CowError({
+        kind: 'orderbook',
+        category: 'insufficientFunds',
+        errorType: 'InsufficientAllowance',
+        message: 'token approval required',
+        retryable: false,
+      }),
+    )
+    expect(ui.title).toBe('Token approval needed')
+    expect(ui.action).toBe('approve')
+  })
+
   it('wraps non-SDK errors safely', () => {
     expect(toUiError(new Error('boom')).title).toBe('Unexpected error')
+  })
+})
+
+describe('orderbookAction (errorType → recovery)', () => {
+  it('maps the services errorType tags onto a concrete next step', () => {
+    expect(orderbookAction('InsufficientAllowance')).toBe('approve')
+    expect(orderbookAction('InsufficientBalance')).toBe('fund')
+    expect(orderbookAction('QuoteNotFound')).toBe('requote')
+    expect(orderbookAction('UnsupportedToken')).toBeUndefined()
+    expect(orderbookAction(undefined)).toBeUndefined()
   })
 })

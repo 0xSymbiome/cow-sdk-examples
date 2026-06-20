@@ -24,6 +24,8 @@ import {
 import { SwapSettingsPanel } from './SwapSettings'
 import { TokenSelect } from './TokenSelect'
 import { useNativePrice, useQuote } from './useSwap'
+import { useWrapUnwrap, wrappedNativeFor, type WrapMode } from './wrap'
+import { useToast } from '../../ui/toast'
 
 type Mode = 'market' | 'limit'
 type Side = 'sell' | 'buy'
@@ -63,6 +65,8 @@ export function SwapCard() {
   const [settingsOpen, setSettingsOpen] = useState(false)
   const [picking, setPicking] = useState<Side>()
   const [reviewing, setReviewing] = useState(false)
+  const wrap = useWrapUnwrap()
+  const toast = useToast()
 
   // Derive the active tokens during render: keep the user's selection while it
   // belongs to the current chain's list, otherwise fall back to sensible
@@ -93,6 +97,19 @@ export function SwapCard() {
   const sellBalance = sellToken ? balances.data?.[sellToken.address] : undefined
   const buyBalance = buyToken ? balances.data?.[buyToken.address] : undefined
 
+  // ETH ↔ wrapped-native (e.g. WETH) is a 1:1 on-chain conversion, not a swap.
+  // The SDK resolves the wrapped-native token and builds the wrap/unwrap
+  // transaction directly, so this pair skips the quote, slippage, and orderbook.
+  const weth = useMemo(() => wrappedNativeFor(chainId), [chainId])
+  const wrapMode: WrapMode | undefined =
+    mode !== 'market' || weth === undefined || sellToken === undefined || buyToken === undefined
+      ? undefined
+      : sellToken.native && buyToken.address === weth.address.toLowerCase()
+        ? 'wrap'
+        : sellToken.address === weth.address.toLowerCase() && buyToken.native
+          ? 'unwrap'
+          : undefined
+
   function setMax() {
     if (!sellToken || sellBalance === undefined) return
     setExactSide('sell')
@@ -110,7 +127,7 @@ export function SwapCard() {
 
   // Native sells go through eth-flow, which is sell-exact, so buy-side is offered
   // only for ERC-20 sells. `side` is the effective exact side after that guard.
-  const canBuySide = mode === 'market' && sellToken !== undefined && !sellToken.native
+  const canBuySide = mode === 'market' && sellToken !== undefined && !sellToken.native && wrapMode === undefined
   const side: Side = canBuySide ? exactSide : 'sell'
 
   // Resolve the settings into order knobs once. Auto leaves `slippageBps` unset so
@@ -126,7 +143,8 @@ export function SwapCard() {
   const exactAmount = side === 'sell' ? sellAmount : buyAmount
 
   const swapParams: SwapParametersInput | null = useMemo(() => {
-    if (mode !== 'market' || !sellToken || !buyToken || account === undefined || !exactToken) return null
+    // A wrap/unwrap pair is not quoted — it settles 1:1 on-chain.
+    if (wrapMode || mode !== 'market' || !sellToken || !buyToken || account === undefined || !exactToken) return null
     if (!isPositiveAmount(exactAmount, exactToken.decimals)) return null
     // The SDK requires an owner for quote-only flows; it builds the order-to-sign
     // payload for the connected account.
@@ -140,7 +158,7 @@ export function SwapCard() {
       ...(receiver !== undefined ? { receiver } : {}),
       owner: account,
     }
-  }, [mode, sellToken, buyToken, account, side, exactToken, exactAmount, validFor, slippageParam, receiver])
+  }, [wrapMode, mode, sellToken, buyToken, account, side, exactToken, exactAmount, validFor, slippageParam, receiver])
 
   // Pause quote polling while the review modal is open so the amounts cannot
   // change between the user reading them and signing.
@@ -184,7 +202,14 @@ export function SwapCard() {
   const estimatedSell = amounts && sellToken ? formatAmount(amounts.afterPartnerFees.sellAmount, sellToken.decimals) : ''
   const estimatedBuy = amounts && buyToken ? formatAmount(amounts.afterPartnerFees.buyAmount, buyToken.decimals) : ''
   const sellFieldValue = mode === 'limit' ? sellAmount : side === 'sell' ? sellAmount : estimatedSell
-  const buyFieldValue = mode === 'limit' ? limitBuyAmount : side === 'buy' ? buyAmount : estimatedBuy
+  // A wrap/unwrap is 1:1, so the buy side mirrors the sell amount exactly.
+  const buyFieldValue = wrapMode
+    ? sellAmount
+    : mode === 'limit'
+      ? limitBuyAmount
+      : side === 'buy'
+        ? buyAmount
+        : estimatedBuy
 
   function onSellInput(value: string) {
     setSellAmount(value)
@@ -241,6 +266,36 @@ export function SwapCard() {
     !insufficientBalance &&
     !recipientIncomplete &&
     (marketReady || limitReady)
+
+  // Wrap/unwrap is sell-exact and 1:1, so it reuses the balance guard but no quote.
+  const wrapAtoms =
+    wrapMode && sellToken && amountEntered ? toAtoms(sellAmount, sellToken.decimals) : undefined
+  const wrapInsufficient =
+    wrapAtoms !== undefined && sellBalance !== undefined && BigInt(wrapAtoms) > BigInt(sellBalance)
+  const canWrap =
+    wrapMode !== undefined && account !== undefined && !wrongNetwork && amountEntered && !wrapInsufficient
+
+  function runWrap() {
+    if (wrapMode === undefined || !sellToken || wrapAtoms === undefined) return
+    wrap.mutate(
+      { mode: wrapMode, atoms: wrapAtoms },
+      {
+        onSuccess: () => {
+          toast.push({
+            tone: 'success',
+            title: wrapMode === 'wrap' ? 'Wrapped' : 'Unwrapped',
+            detail: `${sellAmount} ${sellToken.symbol} → ${buyToken?.symbol ?? ''}.`,
+          })
+          setSellAmount('')
+          setBuyAmount('')
+        },
+        onError: (error) => {
+          const ui = toUiError(error)
+          toast.push({ tone: ui.userRejected ? 'info' : 'danger', title: ui.title, detail: ui.detail })
+        },
+      },
+    )
+  }
 
   // The slippage-protected bound flips with the side: a floor on the buy when
   // selling, a ceiling on the sell when buying.
@@ -360,26 +415,55 @@ export function SwapCard() {
         </div>
       ) : null}
 
-      <Button
-        variant="primary"
-        className="swap-action"
-        disabled={!canReview}
-        onClick={() => setReviewing(true)}
-      >
-        {account === undefined
-          ? 'Connect a wallet'
-          : wrongNetwork
-            ? 'Unsupported network'
-            : !amountEntered
-              ? 'Enter an amount'
-              : insufficientBalance
-                ? `Insufficient ${sellToken?.symbol ?? ''} balance`
-                : recipientIncomplete
-                  ? 'Enter a valid recipient'
-                  : mode === 'market' && quote.isFetching && !quote.data
-                    ? 'Fetching quote…'
-                    : 'Review order'}
-      </Button>
+      {wrapMode ? (
+        <>
+          <Button
+            variant="primary"
+            className="swap-action"
+            disabled={!canWrap || wrap.isPending}
+            loading={wrap.isPending}
+            onClick={runWrap}
+          >
+            {account === undefined
+              ? 'Connect a wallet'
+              : wrongNetwork
+                ? 'Unsupported network'
+                : !amountEntered
+                  ? 'Enter an amount'
+                  : wrapInsufficient
+                    ? `Insufficient ${sellToken?.symbol ?? ''} balance`
+                    : wrapMode === 'wrap'
+                      ? `Wrap ${sellToken?.symbol ?? ''}`
+                      : `Unwrap ${sellToken?.symbol ?? ''}`}
+          </Button>
+          <p className="review-foot">
+            A 1:1 on-chain {wrapMode} — no protocol fee, no signature. The SDK builds the{' '}
+            {wrapMode === 'wrap' ? `${weth?.symbol ?? 'wrapped'} deposit` : `${sellToken?.symbol ?? ''} withdraw`}{' '}
+            transaction; your wallet submits it.
+          </p>
+        </>
+      ) : (
+        <Button
+          variant="primary"
+          className="swap-action"
+          disabled={!canReview}
+          onClick={() => setReviewing(true)}
+        >
+          {account === undefined
+            ? 'Connect a wallet'
+            : wrongNetwork
+              ? 'Unsupported network'
+              : !amountEntered
+                ? 'Enter an amount'
+                : insufficientBalance
+                  ? `Insufficient ${sellToken?.symbol ?? ''} balance`
+                  : recipientIncomplete
+                    ? 'Enter a valid recipient'
+                    : mode === 'market' && quote.isFetching && !quote.data
+                      ? 'Fetching quote…'
+                      : 'Review order'}
+        </Button>
+      )}
 
       <SwapSettingsPanel
         open={settingsOpen}
