@@ -23,3 +23,8 @@ export const QUOTE_REFRESH_INTERVAL_MS = 20_000
 
 // CoW Explorer base; order pages live at `{base}/{network}/orders/{uid}`.
 export const COW_EXPLORER_BASE = 'https://explorer.cow.fi'
+
+// WalletConnect project id (public, client-side identifier from WalletConnect
+// Cloud). It lets a smart-contract wallet — a Safe — connect to this dApp, which
+// is what TWAP/composable orders require.
+export const WALLETCONNECT_PROJECT_ID = '47eef5ea8610c5f6a81aaca6a4888dda'

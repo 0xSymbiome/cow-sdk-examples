@@ -1,17 +1,15 @@
 import { useMemo, useState } from 'react'
 
-import { wasmVersion, type QuoteResultsDto } from '@symbiome-forge/cow-sdk-wasm/trading'
+import { wasmVersion, type QuoteResults } from '@symbiome-forge/cow-sdk-wasm/trading'
 
 import { chainMeta } from '../../chains/registry'
 import { formatAmount } from '../../lib/format'
 import { useTokenList, type TokenInfo } from '../../tokens/tokens'
 import { useInspector } from './store'
 
-// An optional drawer that surfaces the SDK's output for the *current quote* — the
-// exact thing the wallet would sign next. The Summary tab resolves token symbols
-// and decimals so the values read like the swap card; the JSON tab keeps the raw
-// base-unit / address fidelity. It stays live and legible while a trade is in
-// progress so the values can be inspected as they change.
+// A drawer that surfaces the SDK's output for the *current quote* — exactly what
+// the wallet would sign next. The Summary tab resolves token symbols and decimals
+// so it reads like the swap card; the JSON tab keeps the raw base-unit/address fidelity.
 
 type Tab = 'summary' | 'json'
 
@@ -52,7 +50,7 @@ export function InspectorDrawer() {
               {' · '}
               <a
                 className="src-link"
-                href={`https://github.com/0xSymbiome/cow-rs/blob/v${sdkVersion}/crates/wasm/snapshots/facade/trading.d.ts`}
+                href={`https://github.com/0xSymbiome/cow-rs/blob/v${sdkVersion}/crates/js/snapshots/facade/trading.d.ts`}
                 target="_blank"
                 rel="noreferrer"
               >
@@ -119,7 +117,7 @@ export function InspectorDrawer() {
   )
 }
 
-function Summary({ quote }: { quote: QuoteResultsDto }) {
+function Summary({ quote }: { quote: QuoteResults }) {
   const order = quote.orderToSign
   const amounts = quote.amountsAndCosts
   const domain = quote.orderTypedData.domain
@@ -150,7 +148,7 @@ function Summary({ quote }: { quote: QuoteResultsDto }) {
         <Row label="Buy (minimum)" value={withBuy(order.buyAmount)} mono strong />
         <Row label="Sell token" value={tokenLabel(sell, order.sellToken)} mono />
         <Row label="Buy token" value={tokenLabel(buy, order.buyToken)} mono />
-        <Row label="Receiver" value={shorten(order.receiver)} mono />
+        <Row label="Receiver" value={order.receiver ? shorten(order.receiver) : 'owner (self)'} mono />
         <Row label="Valid until" value={formatUnixSeconds(order.validTo)} />
         <Row label="App data" value={shorten(order.appData)} mono />
       </dl>

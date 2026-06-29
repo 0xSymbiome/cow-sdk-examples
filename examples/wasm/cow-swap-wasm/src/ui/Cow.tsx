@@ -1,9 +1,7 @@
 import type { ReactNode } from 'react'
 
-// One characterful cow — the app's icon, guide, and the face of every success and
-// error. A single parametric SVG so the whole interface speaks with one voice. Cow
-// colours are fixed on purpose (a cow is a cow in every theme); the gold horns echo
-// the app accent.
+// One parametric SVG cow — the app's icon and the face of every success and error.
+// Cow colours are fixed on purpose (a cow is a cow in every theme).
 export type CowMood = 'happy' | 'thinking' | 'celebrating' | 'worried' | 'speedy'
 
 interface CowProps {

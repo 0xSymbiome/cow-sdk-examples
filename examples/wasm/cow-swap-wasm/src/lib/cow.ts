@@ -9,16 +9,20 @@ import {
 import { APP_CODE } from '../config'
 
 // Construction and lifecycle for the WASM SDK clients: one-time module
-// initialization, a per-chain client cache, and disposal of wasm-held resources.
-// Callers use the returned clients directly.
+// initialization and a per-chain client cache. The clients are module-scoped
+// singletons that live for the whole page session — the browser reclaims the wasm
+// instance on unload — so they are deliberately NOT disposed on a React unmount.
+// Freeing a client there would race an in-flight quote/orders request still
+// resolving inside the wasm; the resumed future would then read freed memory
+// (a "memory access out of bounds" trap). `disposeChain`/`disposeAll` remain for
+// consumers that create and tear down clients dynamically.
 
 let initialized: Promise<void> | undefined
 
 /**
- * Idempotently initialize the wasm module. The browser resolves the trading
- * flavour's `web` target, which fetches and instantiates the module on this call;
- * the `bundler`/`nodejs` targets instantiate on import, so this resolves
- * immediately there — one initialization shape works across every target.
+ * Idempotently initialize the wasm module. The `web` target fetches and
+ * instantiates it here; `bundler`/`nodejs` instantiate on import and resolve
+ * immediately — so one initialization shape works across every target.
  */
 export function ensureCowReady(): Promise<void> {
   initialized ??= initialize()

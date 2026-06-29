@@ -6,10 +6,9 @@ const LIGHT_KM_PER_MS = 299.792458
 const EARTH_CIRCUMFERENCE_KM = 40_075
 const EARTH_MOON_KM = 384_400
 
-// The full-render time: navigation start → first paint. `performance.now()` is the
-// milliseconds since navigation start, read in a frame after this component mounts.
-// Because the app renders only once the WASM module is ready (see main.tsx), this
-// captures the honest end-to-end cost — bundle, WASM init, render, and paint.
+// Full-render time: navigation start → first paint, via `performance.now()` read a
+// frame after mount. The app renders only once WASM is ready (see main.tsx), so
+// this is the honest end-to-end cost — bundle, WASM init, render, and paint.
 function useRenderBenchmark(): number | undefined {
   const [renderMs, setRenderMs] = useState<number>()
   useEffect(() => {

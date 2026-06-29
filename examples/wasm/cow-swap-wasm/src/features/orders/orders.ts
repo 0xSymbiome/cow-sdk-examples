@@ -2,7 +2,7 @@ import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query'
 import { useEffect, useRef } from 'react'
 import type { Address } from 'viem'
 
-import { signCancellationWithTypedDataSigner, type OrderDto } from '@symbiome-forge/cow-sdk-wasm/trading'
+import { signCancellationWithTypedDataSigner, type Order } from '@symbiome-forge/cow-sdk-wasm/trading'
 
 import { ORDER_POLL_IDLE_MS, ORDER_POLL_PENDING_MS } from '../../config'
 import { getOrderBookClient } from '../../lib/cow'
@@ -10,7 +10,7 @@ import { typedDataSigner } from '../../lib/cow-callbacks'
 import { useWallet } from '../../wallet/WalletProvider'
 
 // An order is still settling only while open or awaiting its pre-signature.
-function hasPendingOrder(orders: OrderDto[] | undefined): boolean {
+function hasPendingOrder(orders: Order[] | undefined): boolean {
   return orders?.some((o) => o.status === 'open' || o.status === 'presignaturePending') ?? false
 }
 
@@ -48,7 +48,7 @@ export function useTotalSurplus(chainId: number | undefined, account: Address | 
 export function useInvalidateSurplusOnFill(
   chainId: number | undefined,
   account: Address | undefined,
-  orders: OrderDto[] | undefined,
+  orders: Order[] | undefined,
 ) {
   const queryClient = useQueryClient()
   const filled = orders?.filter((o) => o.status === 'fulfilled').length ?? 0

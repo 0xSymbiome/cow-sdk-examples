@@ -1,6 +1,6 @@
 import { useSyncExternalStore } from 'react'
 
-import type { QuoteResultsDto } from '@symbiome-forge/cow-sdk-wasm/trading'
+import type { QuoteResults } from '@symbiome-forge/cow-sdk-wasm/trading'
 
 // External store holding the most recent quote and the most recent transient
 // retry, so the inspector drawer can display the SDK's raw output and its
@@ -16,7 +16,7 @@ export interface RetryEvent {
 }
 
 interface InspectorState {
-  lastQuote?: QuoteResultsDto
+  lastQuote?: QuoteResults
   lastRetry?: RetryEvent
 }
 
@@ -28,7 +28,7 @@ function emit(next: InspectorState): void {
   for (const listener of listeners) listener()
 }
 
-export function recordQuote(quote: QuoteResultsDto): void {
+export function recordQuote(quote: QuoteResults): void {
   emit({ ...state, lastQuote: quote })
 }
 

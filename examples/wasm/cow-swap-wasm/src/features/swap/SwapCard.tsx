@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState } from 'react'
 import { isAddress } from 'viem'
 
-import type { SwapParametersInput } from '@symbiome-forge/cow-sdk-wasm/trading'
+import type { TradeParams } from '@symbiome-forge/cow-sdk-wasm/trading'
 
 import { QUOTE_REFRESH_INTERVAL_MS } from '../../config'
 import { formatAmount, fromAtoms, isPositiveAmount, toAtoms } from '../../lib/format'
@@ -10,8 +10,8 @@ import { isSupportedChain } from '../../chains/registry'
 import { useBalances, useTokenList, type TokenInfo } from '../../tokens/tokens'
 import { Cow } from '../../ui/Cow'
 import { Button } from '../../ui/primitives'
-import { TokenLogo } from '../../ui/TokenLogo'
 import { useWallet } from '../../wallet/WalletProvider'
+import { TwapPanel } from '../twap/TwapPanel'
 import { ReviewModal } from './ReviewModal'
 import {
   DEFAULT_SETTINGS,
@@ -22,12 +22,14 @@ import {
   type SwapSettings,
 } from './settings'
 import { SwapSettingsPanel } from './SwapSettings'
+import { TwapSettingsPanel } from './TwapSettings'
+import { TokenField } from './TokenField'
 import { TokenSelect } from './TokenSelect'
 import { useNativePrice, useQuote } from './useSwap'
 import { useWrapUnwrap, wrappedNativeFor, type WrapMode } from './wrap'
 import { useToast } from '../../ui/toast'
 
-type Mode = 'market' | 'limit'
+type Mode = 'market' | 'limit' | 'twap'
 type Side = 'sell' | 'buy'
 
 function pickDefault(tokens: TokenInfo[], symbol: string): TokenInfo | undefined {
@@ -68,12 +70,9 @@ export function SwapCard() {
   const wrap = useWrapUnwrap()
   const toast = useToast()
 
-  // Derive the active tokens during render: keep the user's selection while it
-  // belongs to the current chain's list, otherwise fall back to sensible
-  // defaults. No effect needed — the selection follows the chain automatically.
-  // A selection survives a chain switch only if it belongs to the *current* chain.
-  // The native sentinel address is identical on every chain, so address alone is
-  // not enough — compare the chain id too.
+  // Keep the user's selection while it belongs to the current chain's list,
+  // otherwise fall back to defaults — derived in render, no effect needed. The
+  // native sentinel address is identical on every chain, so match the chain id too.
   const inList = (token: TokenInfo | undefined) =>
     token !== undefined &&
     tokens.some(
@@ -135,14 +134,14 @@ export function SwapCard() {
   // recipient flow into every quote so the displayed amounts already reflect them.
   const slippageParam = manualSlippageBps(settings)
   const receiver = resolvedReceiver(settings)
-  const validFor = validForSeconds(settings, mode)
+  const validFor = validForSeconds(settings, mode === 'twap' ? 'market' : mode)
   const recipientIncomplete = recipientPending(settings)
 
   // The fixed side drives the quote: its token + amount become `kind` + `amount`.
   const exactToken = side === 'sell' ? sellToken : buyToken
   const exactAmount = side === 'sell' ? sellAmount : buyAmount
 
-  const swapParams: SwapParametersInput | null = useMemo(() => {
+  const swapParams: TradeParams | null = useMemo(() => {
     // A wrap/unwrap pair is not quoted — it settles 1:1 on-chain.
     if (wrapMode || mode !== 'market' || !sellToken || !buyToken || account === undefined || !exactToken) return null
     if (!isPositiveAmount(exactAmount, exactToken.decimals)) return null
@@ -150,27 +149,51 @@ export function SwapCard() {
     // payload for the connected account.
     return {
       kind: side,
-      sellToken: sellToken.address,
-      buyToken: buyToken.address,
+      sellToken: sellToken.address as `0x${string}`,
+      buyToken: buyToken.address as `0x${string}`,
       amount: toAtoms(exactAmount, exactToken.decimals),
       validFor,
       ...(slippageParam !== undefined ? { slippageBps: slippageParam } : {}),
-      ...(receiver !== undefined ? { receiver } : {}),
+      ...(receiver !== undefined ? { receiver: receiver as `0x${string}` } : {}),
       owner: account,
     }
   }, [wrapMode, mode, sellToken, buyToken, account, side, exactToken, exactAmount, validFor, slippageParam, receiver])
 
+  // In limit mode, a short market quote drives the "Market" reference so the user
+  // can place their limit relative to the current rate.
+  const marketRateParams: TradeParams | null = useMemo(() => {
+    if (mode !== 'limit' || !sellToken || !buyToken || account === undefined) return null
+    if (!isPositiveAmount(sellAmount, sellToken.decimals)) return null
+    return {
+      kind: 'sell',
+      sellToken: sellToken.address as `0x${string}`,
+      buyToken: buyToken.address as `0x${string}`,
+      amount: toAtoms(sellAmount, sellToken.decimals),
+      validFor: 1800,
+      owner: account,
+    }
+  }, [mode, sellToken, buyToken, account, sellAmount])
+
   // Pause quote polling while the review modal is open so the amounts cannot
   // change between the user reading them and signing.
-  const quote = useQuote(chainId, swapParams, !reviewing)
+  const quote = useQuote(chainId, mode === 'limit' ? marketRateParams : swapParams, !reviewing)
   const amounts = quote.data?.amountsAndCosts
+
+  // In limit mode, the current market rate and how the user's limit compares to it.
+  const marketRate =
+    mode === 'limit' && amounts && buyToken && Number(sellAmount) > 0
+      ? Number(fromAtoms(amounts.afterPartnerFees.buyAmount, buyToken.decimals)) / Number(sellAmount)
+      : undefined
+  const limitRate =
+    Number(limitBuyAmount) > 0 && Number(sellAmount) > 0 ? Number(limitBuyAmount) / Number(sellAmount) : undefined
+  const limitPremium =
+    marketRate !== undefined && limitRate !== undefined ? (limitRate / marketRate - 1) * 100 : undefined
   const sellPrice = useNativePrice(chainId, sellToken?.address)
   const buyPrice = useNativePrice(chainId, buyToken?.address)
 
-  // Price impact: the value given up versus the native-price mid, as a clean
-  // dimensionless ratio (the native units cancel). A thin testnet price feed can
-  // produce implausible values, so it is shown only when both prices load and the
-  // result is sane — the minimum-received bound still protects the trade either way.
+  // Price impact: value given up versus the native-price mid, a dimensionless ratio
+  // (native units cancel). Thin testnet feeds produce implausible values, so it is
+  // shown only when sane — the minimum-received bound protects the trade either way.
   const sellValueNative =
     amounts && sellPrice.data !== undefined
       ? Number(amounts.afterPartnerFees.sellAmount) * sellPrice.data
@@ -324,17 +347,24 @@ export function SwapCard() {
           <button type="button" className={mode === 'limit' ? 'tab tab-active' : 'tab'} onClick={() => setMode('limit')}>
             Limit
           </button>
+          <button type="button" className={mode === 'twap' ? 'tab tab-active' : 'tab'} onClick={() => setMode('twap')}>
+            TWAP
+          </button>
         </div>
         <button
           type="button"
           className="icon-btn settings-btn"
           onClick={() => setSettingsOpen(true)}
-          aria-label="Swap settings"
+          aria-label="Settings"
         >
           ⚙
         </button>
       </div>
 
+      {mode === 'twap' ? (
+        <TwapPanel settings={settings} onSettingsChange={setSettings} />
+      ) : (
+        <>
       <TokenField
         label="Sell"
         token={sellToken}
@@ -363,6 +393,22 @@ export function SwapCard() {
         onAmount={onBuyInput}
         onPick={() => setPicking('buy')}
       />
+
+      {mode === 'limit' && marketRate !== undefined && sellToken && buyToken ? (
+        <div className="twap-line">
+          <span className="twap-line-label">Market</span>
+          <span className="twap-line-value">
+            1 {sellToken.symbol} = {Number(marketRate.toFixed(6))} {buyToken.symbol}
+            {limitPremium !== undefined ? (
+              <span className="muted">
+                {' '}
+                ({limitPremium >= 0 ? '+' : ''}
+                {limitPremium.toFixed(2)}% vs market)
+              </span>
+            ) : null}
+          </span>
+        </div>
+      ) : null}
 
       {settings.recipient.enabled ? (
         <div className="recipient-field">
@@ -465,15 +511,6 @@ export function SwapCard() {
         </Button>
       )}
 
-      <SwapSettingsPanel
-        open={settingsOpen}
-        onClose={() => setSettingsOpen(false)}
-        mode={mode}
-        settings={settings}
-        onChange={setSettings}
-        suggestedSlippageBps={quote.data?.suggestedSlippageBps}
-      />
-
       <TokenSelect
         open={picking !== undefined}
         onClose={() => setPicking(undefined)}
@@ -506,76 +543,28 @@ export function SwapCard() {
           }}
         />
       ) : null}
-    </section>
-  )
-}
+        </>
+      )}
 
-interface TokenFieldProps {
-  label: string
-  token: TokenInfo | undefined
-  amount: string
-  editable: boolean
-  loading?: boolean
-  balanceAtoms?: string
-  onAmount: (value: string) => void
-  onPick: () => void
-  onMax?: () => void
-}
-
-function TokenField({
-  label,
-  token,
-  amount,
-  editable,
-  loading,
-  balanceAtoms,
-  onAmount,
-  onPick,
-  onMax,
-}: TokenFieldProps) {
-  return (
-    <div className="token-field">
-      <span className="token-field-label">{label}</span>
-      <div className="token-field-row">
-        {/* No real token amount needs this many characters; the cap stops pathological input. */}
-        <input
-          className={`amount-input${amount.length > 18 ? ' amount-xs' : amount.length > 11 ? ' amount-sm' : ''}`}
-          inputMode="decimal"
-          maxLength={30}
-          placeholder={loading ? '…' : '0.0'}
-          value={amount}
-          readOnly={!editable}
-          onChange={(event) => {
-            // Some mobile keypads emit the locale decimal separator (a comma); store a dot.
-            const next = event.target.value.replace(/,/g, '.')
-            if (next === '' || /^\d*\.?\d*$/.test(next)) onAmount(next)
-          }}
+      {/* Settings popover — one gear, the panel matches the active mode. */}
+      {mode === 'twap' ? (
+        <TwapSettingsPanel
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          settings={settings}
+          onChange={setSettings}
         />
-        <button type="button" className="token-pick" onClick={onPick}>
-          {token ? (
-            <>
-              <TokenLogo token={token} size={22} />
-              <span>{token.symbol}</span>
-            </>
-          ) : (
-            <span>Select</span>
-          )}
-          <span className="chevron">▾</span>
-        </button>
-      </div>
-      {token && balanceAtoms !== undefined ? (
-        <div className="token-field-meta">
-          <span className="balance">
-            Balance: {formatAmount(balanceAtoms, token.decimals, 4)} {token.symbol}
-          </span>
-          {onMax ? (
-            <button type="button" className="max-btn" onClick={onMax}>
-              Max
-            </button>
-          ) : null}
-        </div>
-      ) : null}
-    </div>
+      ) : (
+        <SwapSettingsPanel
+          open={settingsOpen}
+          onClose={() => setSettingsOpen(false)}
+          mode={mode}
+          settings={settings}
+          onChange={setSettings}
+          suggestedSlippageBps={quote.data?.suggestedSlippageBps}
+        />
+      )}
+    </section>
   )
 }
 

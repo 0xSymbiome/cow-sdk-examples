@@ -11,10 +11,9 @@ if (!container) throw new Error('Missing #root element')
 
 const root = createRoot(container)
 
-// The browser resolves the trading flavour's web build, where the host owns wasm
-// instantiation, so render only after `initialize()` resolves. (On the
-// bundler/nodejs targets it resolves immediately, so the same entry works there.)
-// If that initialisation fails, the cow says so rather than leaving a blank page.
+// The web build instantiates wasm on `initialize()`, so render only after it
+// resolves (it resolves immediately on bundler/nodejs, so the same entry works
+// everywhere). If init fails, the cow says so rather than leaving a blank page.
 void ensureCowReady().then(
   () => {
     root.render(

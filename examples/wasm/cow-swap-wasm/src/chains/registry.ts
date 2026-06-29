@@ -34,10 +34,9 @@ export interface ChainMeta {
   testnet: boolean
 }
 
-// Metadata for the chains this UI fully supports. The network switcher renders
-// the intersection of this registry with `supportedChainIds()`, so the SDK is
-// the source of truth for which chains are live — this table only adds the
-// display data the SDK does not carry.
+// Display metadata for supported chains. The switcher renders the intersection of
+// this registry with `supportedChainIds()` — the SDK is the source of truth for
+// which chains are live; this table only adds the display data it does not carry.
 const REGISTRY: Record<number, ChainMeta> = {
   1: { chain: mainnet, label: 'Ethereum', nativeSymbol: 'ETH', explorerBase: 'https://etherscan.io', cowNetwork: 'mainnet', testnet: false },
   100: { chain: gnosis, label: 'Gnosis Chain', nativeSymbol: 'xDAI', explorerBase: 'https://gnosisscan.io', cowNetwork: 'xdai', testnet: false },

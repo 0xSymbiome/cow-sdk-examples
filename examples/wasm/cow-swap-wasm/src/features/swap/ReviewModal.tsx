@@ -1,6 +1,6 @@
 import { useState } from 'react'
 
-import type { QuoteResultsDto } from '@symbiome-forge/cow-sdk-wasm/trading'
+import type { QuoteResults } from '@symbiome-forge/cow-sdk-wasm/trading'
 
 import { formatAmount, toAtoms } from '../../lib/format'
 import { toUiError } from '../../lib/cow-errors'
@@ -22,7 +22,7 @@ interface ReviewModalProps {
   buyAmount: string
   limitBuyAmount: string
   settings: SwapSettings
-  quote: QuoteResultsDto | undefined
+  quote: QuoteResults | undefined
   onClose: () => void
   onDone: () => void
 }
@@ -145,15 +145,15 @@ export function ReviewModal({
       {
         params: {
           kind: 'sell',
-          sellToken: sellToken.address,
-          buyToken: buyToken.address,
+          sellToken: sellToken.address as `0x${string}`,
+          buyToken: buyToken.address as `0x${string}`,
           sellAmount: toAtoms(sellAmount, sellToken.decimals),
           buyAmount: toAtoms(limitBuyAmount, buyToken.decimals),
           validFor,
-          // The limit price is the exact floor — no slippage haircut (matches upstream).
+          // The limit price is the exact floor — no slippage haircut.
           slippageBps: 0,
           partiallyFillable: settings.partialFills,
-          ...(receiver !== undefined ? { receiver } : {}),
+          ...(receiver !== undefined ? { receiver: receiver as `0x${string}` } : {}),
         },
         sellToken: sellToken.address,
         approval: settings.approval,

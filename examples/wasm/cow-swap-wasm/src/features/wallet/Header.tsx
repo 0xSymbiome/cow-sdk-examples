@@ -4,7 +4,9 @@ import { chainMeta, explorerAddressUrl, supportedChains } from '../../chains/reg
 import { Cow } from '../../ui/Cow'
 import { Button } from '../../ui/primitives'
 import { Modal } from '../../ui/Modal'
+import { Select } from '../../ui/Select'
 import { useToast } from '../../ui/toast'
+import { walletOptions } from '../../wallet/connector-list'
 import { useWallet } from '../../wallet/WalletProvider'
 
 function short(address: string): string {
@@ -12,8 +14,18 @@ function short(address: string): string {
 }
 
 export function Header() {
-  const { account, chainId, providers, connect, disconnect, switchChain, walletName, connecting } =
-    useWallet()
+  const {
+    account,
+    chainId,
+    connectors,
+    connect,
+    connectWalletConnect,
+    connectCoinbase,
+    disconnect,
+    switchChain,
+    walletName,
+    connecting,
+  } = useWallet()
   const toast = useToast()
   const [picking, setPicking] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -21,8 +33,7 @@ export function Header() {
   const menuRef = useRef<HTMLDivElement>(null)
   const chains = supportedChains()
   const knownChain = chainId !== undefined && chainMeta(chainId) !== undefined
-  // Phone browsers have no injected provider; a wallet's in-app browser does.
-  const isMobile = /Android|iPhone|iPad|iPod/i.test(navigator.userAgent)
+  const options = walletOptions(connectors, connect, connectWalletConnect, connectCoinbase)
 
   // Close the account menu on an outside click or Escape.
   useEffect(() => {
@@ -74,11 +85,14 @@ export function Header() {
 
       <div className="header-actions">
         {account !== undefined ? (
-          <select
-            className="chain-select"
-            value={knownChain ? chainId : ''}
-            onChange={(event) => {
-              void switchChain(Number(event.target.value)).catch((error: unknown) => {
+          <Select
+            value={knownChain ? String(chainId) : ''}
+            options={chains.map((meta) => ({
+              value: String(meta.chain.id),
+              label: `${meta.label}${meta.testnet ? ' (testnet)' : ''}`,
+            }))}
+            onChange={(value) => {
+              void switchChain(Number(value)).catch((error: unknown) => {
                 if ((error as { code?: number }).code === 4001) return
                 toast.push({
                   tone: 'danger',
@@ -87,15 +101,10 @@ export function Header() {
                 })
               })
             }}
-          >
-            {!knownChain ? <option value="">Unsupported network</option> : null}
-            {chains.map((meta) => (
-              <option key={meta.chain.id} value={meta.chain.id}>
-                {meta.label}
-                {meta.testnet ? ' (testnet)' : ''}
-              </option>
-            ))}
-          </select>
+            ariaLabel="Network"
+            placeholder="Unsupported network"
+            triggerClassName="chain-select"
+          />
         ) : null}
 
         {account === undefined ? (
@@ -153,51 +162,26 @@ export function Header() {
       </div>
 
       <Modal open={picking} onClose={() => setPicking(false)} title="Connect a wallet">
-        {providers.length === 0 ? (
-          <div className="empty-guide">
-            <Cow mood="happy" size={56} />
-            {isMobile ? (
-            <div>
-              <p className="muted">Open this page inside your wallet app&apos;s browser to connect:</p>
-              <ul className="wallet-list">
-                <li>
-                  <a href={`https://link.metamask.io/dapp/${window.location.host}${window.location.pathname}`}>
-                    Open in MetaMask
-                  </a>
-                </li>
-                <li>
-                  <a href={`https://go.cb-w.com/dapp?cb_url=${encodeURIComponent(window.location.href)}`}>
-                    Open in Coinbase Wallet
-                  </a>
-                </li>
-              </ul>
-              <p className="muted">Or paste this page&apos;s URL into any wallet&apos;s in-app browser.</p>
-            </div>
-          ) : (
-            <p className="muted">
-              No injected wallet found. Install MetaMask, Rabby, Frame, or another EIP-6963 wallet and
-              reload.
-            </p>
-            )}
-          </div>
-        ) : (
-          <ul className="wallet-list">
-            {providers.map((detail) => (
-              <li key={detail.info.uuid}>
-                <button
-                  type="button"
-                  onClick={async () => {
-                    await connect(detail)
-                    setPicking(false)
-                  }}
-                >
-                  <img src={detail.info.icon} width={24} height={24} alt="" />
-                  {detail.info.name}
-                </button>
-              </li>
-            ))}
-          </ul>
-        )}
+        <p className="muted">
+          Pick a wallet below. TWAP orders need a Safe (smart-contract wallet) — connect one through
+          WalletConnect.
+        </p>
+        <ul className="wallet-list">
+          {options.map((option) => (
+            <li key={option.id}>
+              <button
+                type="button"
+                onClick={() => {
+                  option.onSelect()
+                  setPicking(false)
+                }}
+              >
+                {option.icon ? <img src={option.icon} width={24} height={24} alt="" /> : null}
+                {option.name}
+              </button>
+            </li>
+          ))}
+        </ul>
       </Modal>
     </header>
   )

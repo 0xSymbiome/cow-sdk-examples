@@ -7,11 +7,10 @@ import {
   type OrderBookRejectionCategory,
 } from '@symbiome-forge/cow-sdk-wasm/trading'
 
-// Every SDK call throws a `CowError` — a real `Error` subclass that is also a
+// Every SDK call throws a `CowError`: an `Error` subclass that is also a
 // discriminated union keyed by `kind`. The SDK already classifies the failure
-// (`isRetryable`, `isUserRejection`, the `Retry-After` it parsed, the services
-// `errorType` tag), so this module only maps that verdict onto presentational
-// UI state. The classification logic lives in the SDK, not here.
+// (`isRetryable`, `isUserRejection`, `Retry-After`, the `errorType` tag); this
+// module only maps that verdict onto UI state, it never re-derives it.
 
 /** The next step the user can take to clear a recoverable orderbook rejection. */
 export type UiAction = 'approve' | 'fund' | 'requote'

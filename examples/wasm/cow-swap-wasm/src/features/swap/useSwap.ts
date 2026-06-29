@@ -4,9 +4,9 @@ import type { Address, Hex } from 'viem'
 
 import { withRetry } from '@symbiome-forge/cow-sdk-wasm/trading'
 import type {
-  LimitTradeParametersInput,
-  QuoteResultsDto,
-  SwapParametersInput,
+  LimitTradeParams,
+  QuoteResults,
+  TradeParams,
   TradingClient,
 } from '@symbiome-forge/cow-sdk-wasm/trading'
 import type { PublicClient, WalletClient } from 'viem'
@@ -32,7 +32,7 @@ export interface PostedOrder {
  */
 export function useQuote(
   chainId: number | undefined,
-  params: SwapParametersInput | null,
+  params: TradeParams | null,
   refetchActive = true,
 ) {
   return useQuery({
@@ -47,7 +47,7 @@ export function useQuote(
       const quote = await withRetry(
         () =>
           getTradingClient(chainId as number)
-            .getQuote(params as SwapParametersInput)
+            .getQuote(params as TradeParams)
             .then((envelope) => envelope.value),
         {
           retries: 2,
@@ -163,7 +163,7 @@ export function useTradeExecutor() {
   const market = useMutation<
     PostedOrder,
     Error,
-    { quote: QuoteResultsDto; sellToken: string; sellAtoms: string; native: boolean; approval: ApprovalChoice }
+    { quote: QuoteResults; sellToken: string; sellAtoms: string; native: boolean; approval: ApprovalChoice }
   >({
     mutationFn: async ({ quote, sellToken, sellAtoms, native, approval }) => {
       if (!ready) throw new Error('Connect a wallet first')
@@ -213,7 +213,7 @@ export function useTradeExecutor() {
   const limit = useMutation<
     PostedOrder,
     Error,
-    { params: LimitTradeParametersInput; sellToken: string; approval: ApprovalChoice }
+    { params: LimitTradeParams; sellToken: string; approval: ApprovalChoice }
   >({
     mutationFn: async ({ params, sellToken, approval }) => {
       if (!ready) throw new Error('Connect a wallet first')

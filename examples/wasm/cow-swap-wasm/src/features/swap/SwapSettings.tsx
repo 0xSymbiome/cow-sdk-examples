@@ -118,7 +118,10 @@ export function SwapSettingsPanel({
               onClick={() =>
                 onChange({
                   ...settings,
-                  recipient: { ...settings.recipient, enabled: !settings.recipient.enabled },
+                  recipient: {
+                    enabled: !settings.recipient.enabled,
+                    address: settings.recipient.enabled ? '' : settings.recipient.address,
+                  },
                 })
               }
             >

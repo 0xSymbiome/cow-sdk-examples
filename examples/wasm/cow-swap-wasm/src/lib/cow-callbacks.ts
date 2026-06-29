@@ -1,7 +1,5 @@
 import type {
-  ContractCallDto,
   ContractReadCallback,
-  TypedDataEnvelopeDto,
   TypedDataSignerCallback,
 } from '@symbiome-forge/cow-sdk-wasm/trading'
 import type { Abi, Address, PublicClient, TypedDataDomain, WalletClient } from 'viem'
@@ -16,7 +14,7 @@ import type { Abi, Address, PublicClient, TypedDataDomain, WalletClient } from '
  * normalizes the domain. The key never enters the SDK or this app.
  */
 export function typedDataSigner(wallet: WalletClient, account: Address): TypedDataSignerCallback {
-  return (envelope: TypedDataEnvelopeDto) => {
+  return (envelope) => {
     // viem derives `EIP712Domain` from `domain`; drop it from `types` if present.
     const types = Object.fromEntries(
       Object.entries(envelope.types).filter(([name]) => name !== 'EIP712Domain'),
@@ -38,13 +36,12 @@ export function typedDataSigner(wallet: WalletClient, account: Address): TypedDa
 }
 
 /**
- * Back the SDK's read-only contract callback (used for the CoW allowance check)
- * with viem. viem parses the ABI, encodes args, runs `eth_call`, and decodes the
- * output; we then return the SDK's expected shape: the decoded value
- * JSON-stringified, with integers as decimal strings and addresses lowercased.
+ * Back the SDK's read-only contract callback (the CoW allowance check) with viem:
+ * viem runs the `eth_call` and decodes; we return the SDK's expected shape — the
+ * decoded value JSON-stringified, integers as decimal strings, addresses lowercased.
  */
 export function contractReader(publicClient: PublicClient): ContractReadCallback {
-  return async (call: ContractCallDto): Promise<string> => {
+  return async (call): Promise<string> => {
     const parsed: unknown = JSON.parse(call.abiJson)
     const abi = (Array.isArray(parsed) ? parsed : [parsed]) as Abi
     const args = JSON.parse(call.argsJson) as readonly unknown[]
