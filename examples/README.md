@@ -18,6 +18,8 @@ cancel, entirely client-side
 | Sign orders in a backend without a wallet extension | [`cow-signer-node`](wasm/cow-signer-node) (Node) |
 | Run SDK logic at the edge | [`cow-gateway-cloudflare`](wasm/cow-gateway-cloudflare) (Cloudflare Worker) |
 | Drive the lifecycle from native Rust | [`trading-bot`](native/trading-bot) |
+| Verify a CoW order identity in any host | [`cow-engine-verify`](component/cow-engine-verify) (component) |
+| Confine the trading client as a sandboxed tool | [`cow-agent-sandbox`](component/cow-agent-sandbox) (component) |
 
 ## WASM / TypeScript
 
@@ -47,3 +49,14 @@ cargo run -p cow-trading-bot -- --help       # full command set
 ```
 
 Further single-call Rust scenarios will land here as Cargo examples.
+
+## Component
+
+Standalone examples under [`component/`](component) that consume the SDK as
+published WebAssembly components (OCI artifacts on GHCR), run from native Rust and
+Node and composed with `wac`. See [`component/README.md`](component/README.md).
+
+| Project | Host | Demonstrates |
+| --- | --- | --- |
+| [`cow-engine-verify`](component/cow-engine-verify) | Rust + Node | Reproduce a CoW order identity from the pure engine component, byte-identical across both hosts and to the native golden |
+| [`cow-agent-sandbox`](component/cow-agent-sandbox) | Rust (Wasmtime) | Compose a capability guard onto the published client and drive a live keys-out Sepolia trade from a capability-scoped host |

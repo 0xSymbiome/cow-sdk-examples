@@ -35,6 +35,8 @@ instructions is in [`examples/`](examples/README.md).
 | [`cow-signer-node`](examples/wasm/cow-signer-node) | Node.js ≥ 22 | npm `…/signing` | Offline, deterministic EIP-712 + EIP-1271 order signing through a viem callback |
 | [`cow-gateway-cloudflare`](examples/wasm/cow-gateway-cloudflare) | Cloudflare Worker | npm `…/trading/edge` | An edge orderbook quote gateway with typed upstream error mapping |
 | [`trading-bot`](examples/native/trading-bot) | Native (Rust) | `cow-sdk` | A live reference trading bot: env-driven config, `tracing` telemetry, cooperative cancellation, typed errors |
+| [`cow-engine-verify`](examples/component/cow-engine-verify) | Native + Node | OCI components | Reproduce a CoW order identity from the pure engine component in two hosts, byte-identical to the native golden |
+| [`cow-agent-sandbox`](examples/component/cow-agent-sandbox) | Native (Rust) | OCI components | Compose a capability guard onto the published client and drive a live keys-out Sepolia trade from a capability-scoped host |
 
 The flagship is **[`cow-swap-wasm`](examples/wasm/cow-swap-wasm)** — a hosted,
 fully client-side CoW swap interface where [viem](https://viem.sh) owns the
@@ -61,9 +63,10 @@ trusted to prose. See the SDK's
 
 ```text
 examples/
-  native/   # Rust — the reference trading bot (facade-only; more scenarios as they land)
-  wasm/     # standalone browser, Node, and Cloudflare Worker projects (own lockfiles)
-xtask/      # repository task runner (e.g. cargo run-deterministic-examples)
+  native/    # Rust — the reference trading bot (facade-only; more scenarios as they land)
+  wasm/      # standalone browser, Node, and Cloudflare Worker projects (own lockfiles)
+  component/ # published OCI components, hosted from Rust (Wasmtime) and Node (jco), composed with wac
+xtask/       # repository task runner (e.g. cargo run-deterministic-examples)
 ```
 
 The native trading bot is facade-only: it imports the `cow-sdk` facade (and its

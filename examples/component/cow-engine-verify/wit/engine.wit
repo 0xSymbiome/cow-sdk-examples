@@ -1,0 +1,402 @@
+package root:component;
+
+world root {
+  import wasi:io/poll@0.2.6;
+  import wasi:io/error@0.2.6;
+  import wasi:io/streams@0.2.6;
+  import wasi:cli/environment@0.2.6;
+  import wasi:cli/exit@0.2.6;
+  import wasi:cli/stdin@0.2.6;
+  import wasi:cli/stdout@0.2.6;
+  import wasi:cli/stderr@0.2.6;
+  import wasi:cli/terminal-input@0.2.6;
+  import wasi:cli/terminal-output@0.2.6;
+  import wasi:cli/terminal-stdin@0.2.6;
+  import wasi:cli/terminal-stdout@0.2.6;
+  import wasi:cli/terminal-stderr@0.2.6;
+  import wasi:random/insecure-seed@0.2.6;
+
+  export cow:protocol/order@0.1.0;
+  export cow:protocol/chains@0.1.0;
+  export cow:protocol/app-data@0.1.0;
+  export cow:protocol/tx@0.1.0;
+  export cow:protocol/composable@0.1.0;
+  export cow:protocol/trading-math@0.1.0;
+  export cow:protocol/order-signing@0.1.0;
+  export cow:protocol/events@0.1.0;
+}
+package wasi:io@0.2.6 {
+  interface poll {
+    resource pollable {
+      block: func();
+    }
+  }
+  interface error {
+    resource error;
+  }
+  interface streams {
+    use error.{error};
+    use poll.{pollable};
+
+    resource input-stream;
+
+    resource output-stream {
+      check-write: func() -> result<u64, stream-error>;
+      write: func(contents: list<u8>) -> result<_, stream-error>;
+      blocking-flush: func() -> result<_, stream-error>;
+      subscribe: func() -> pollable;
+    }
+
+    variant stream-error {
+      last-operation-failed(error),
+      closed,
+    }
+  }
+}
+
+
+package wasi:cli@0.2.6 {
+  interface environment {
+    get-environment: func() -> list<tuple<string, string>>;
+  }
+  interface exit {
+    exit: func(status: result);
+  }
+  interface stdin {
+    use wasi:io/streams@0.2.6.{input-stream};
+
+    get-stdin: func() -> input-stream;
+  }
+  interface stdout {
+    use wasi:io/streams@0.2.6.{output-stream};
+
+    get-stdout: func() -> output-stream;
+  }
+  interface stderr {
+    use wasi:io/streams@0.2.6.{output-stream};
+
+    get-stderr: func() -> output-stream;
+  }
+  interface terminal-input {
+    resource terminal-input;
+  }
+  interface terminal-output {
+    resource terminal-output;
+  }
+  interface terminal-stdin {
+    use terminal-input.{terminal-input};
+
+    get-terminal-stdin: func() -> option<terminal-input>;
+  }
+  interface terminal-stdout {
+    use terminal-output.{terminal-output};
+
+    get-terminal-stdout: func() -> option<terminal-output>;
+  }
+  interface terminal-stderr {
+    use terminal-output.{terminal-output};
+
+    get-terminal-stderr: func() -> option<terminal-output>;
+  }
+}
+
+
+package wasi:random@0.2.6 {
+  interface insecure-seed {
+    insecure-seed: func() -> tuple<u64, u64>;
+  }
+}
+
+
+package cow:protocol@0.1.0 {
+  interface order {
+    enum order-kind {
+      buy,
+      sell,
+    }
+
+    enum cow-env {
+      prod,
+      staging,
+    }
+
+    enum signing-scheme {
+      eip712,
+      ethsign,
+      eip1271,
+      presign,
+    }
+
+    enum sell-token-source {
+      erc20,
+      external,
+      internal,
+    }
+
+    enum buy-token-destination {
+      erc20,
+      internal,
+    }
+
+    enum order-class {
+      market,
+      limit,
+      liquidity,
+    }
+
+    enum order-status {
+      presignature-pending,
+      open,
+      fulfilled,
+      cancelled,
+      expired,
+    }
+
+    record order-data {
+      sell-token: string,
+      buy-token: string,
+      receiver: option<string>,
+      sell-amount: string,
+      buy-amount: string,
+      fee-amount: option<string>,
+      valid-to: u32,
+      app-data: string,
+      kind: order-kind,
+      partially-fillable: option<bool>,
+      sell-token-balance: option<string>,
+      buy-token-balance: option<string>,
+    }
+
+    uid: func(chain-id: u64, owner: string, order: order-data) -> result<string, string>;
+
+    digest: func(chain-id: u64, order: order-data) -> result<string, string>;
+  }
+  interface chains {
+    record deployment-addresses {
+      settlement: string,
+      vault-relayer: string,
+      eth-flow: string,
+    }
+
+    record wrapped-native {
+      address: string,
+      symbol: string,
+      decimals: u8,
+    }
+
+    supported-chain-ids: func() -> list<u64>;
+
+    domain-separator: func(chain-id: u64) -> result<string, string>;
+
+    wrapped-native-token: func(chain-id: u64) -> result<wrapped-native, string>;
+
+    deployments: func(chain-id: u64, env: option<string>) -> result<deployment-addresses, string>;
+  }
+  interface app-data {
+    record app-data-info {
+      cid: string,
+      app-data-content: string,
+      app-data-hex: string,
+    }
+
+    hex-to-cid: func(app-data-hex: string) -> result<string, string>;
+
+    cid-to-hex: func(cid: string) -> result<string, string>;
+
+    info: func(doc-json: string) -> result<app-data-info, string>;
+
+    validate: func(doc-json: string) -> result<_, string>;
+  }
+  interface tx {
+    use order.{order-data};
+
+    record tx-request {
+      to: string,
+      data: string,
+      value: string,
+    }
+
+    approve: func(chain-id: u64, token: string, amount: string, spender: option<string>, env: option<string>) -> result<tx-request, string>;
+
+    pre-sign: func(chain-id: u64, order-uid: string, env: option<string>) -> result<tx-request, string>;
+
+    cancel: func(chain-id: u64, order-uid: string, env: option<string>) -> result<tx-request, string>;
+
+    wrap: func(chain-id: u64, amount: string) -> result<tx-request, string>;
+
+    unwrap: func(chain-id: u64, amount: string) -> result<tx-request, string>;
+
+    sell-native: func(chain-id: u64, order: order-data, quote-id: s64, env: option<string>) -> result<tx-request, string>;
+
+    cancel-native: func(chain-id: u64, order: order-data, quote-id: s64, env: option<string>) -> result<tx-request, string>;
+  }
+  interface composable {
+    use tx.{tx-request};
+
+    variant twap-start {
+      at-mining-time,
+      at-epoch(u32),
+    }
+
+    variant twap-duration {
+      auto,
+      limit-duration(u32),
+    }
+
+    record twap-data {
+      sell-token: string,
+      buy-token: string,
+      receiver: option<string>,
+      sell-amount: string,
+      buy-amount: string,
+      number-of-parts: u32,
+      time-between-parts: u32,
+      start: twap-start,
+      duration: twap-duration,
+      app-data: string,
+    }
+
+    record twap-active {
+      part: u32,
+      valid-to: u64,
+      next-part-start: u64,
+      is-last: bool,
+    }
+
+    variant twap-timing {
+      not-started(u64),
+      active(twap-active),
+      expired,
+    }
+
+    twap-create-transaction: func(twap: twap-data, salt: string) -> result<tx-request, string>;
+
+    twap-remove-transaction: func(order-id: string) -> result<tx-request, string>;
+
+    twap-order-id: func(twap: twap-data, salt: string) -> result<string, string>;
+
+    twap-timing-at: func(twap: twap-data, start: u64, now: u64) -> result<twap-timing, string>;
+  }
+  interface trading-math {
+    use app-data.{app-data-info};
+
+    record stage-amounts {
+      sell-amount: string,
+      buy-amount: string,
+    }
+
+    record network-fee {
+      amount-in-sell-currency: string,
+      amount-in-buy-currency: string,
+    }
+
+    record fee-component {
+      amount: string,
+      bps: u32,
+    }
+
+    record quote-costs {
+      network-fee: network-fee,
+      partner-fee: fee-component,
+      protocol-fee: fee-component,
+    }
+
+    record quote-amounts-and-costs {
+      is-sell: bool,
+      costs: quote-costs,
+      before-all-fees: stage-amounts,
+      before-network-costs: stage-amounts,
+      after-protocol-fees: stage-amounts,
+      after-network-costs: stage-amounts,
+      after-partner-fees: stage-amounts,
+      after-slippage: stage-amounts,
+      amounts-to-sign: stage-amounts,
+    }
+
+    calculate-amounts-and-costs: func(quote-json: string, slippage-bps: u32, partner-fee-bps: u32, protocol-fee-bps: string) -> result<quote-amounts-and-costs, string>;
+
+    suggest-slippage-bps: func(quote-json: string, partner-fee-bps: u32, is-eth-flow: bool) -> result<u32, string>;
+
+    build-app-data: func(app-code: string, slippage-bps: u32, order-class: option<string>) -> result<app-data-info, string>;
+  }
+  interface order-signing {
+    use order.{order-data};
+
+    record order-id {
+      order-uid: string,
+      order-digest: string,
+    }
+
+    order-typed-data: func(chain-id: u64, order: order-data) -> result<string, string>;
+
+    generate-order-id: func(chain-id: u64, owner: string, order: order-data) -> result<order-id, string>;
+
+    eip1271-signature-payload: func(order: order-data, ecdsa-signature: string) -> result<string, string>;
+
+    cancellations-typed-data: func(chain-id: u64, order-uids: list<string>) -> result<string, string>;
+  }
+  interface events {
+    record event-log {
+      topics: list<string>,
+      data: string,
+    }
+
+    record settlement-trade {
+      owner: string,
+      sell-token: string,
+      buy-token: string,
+      sell-amount: string,
+      buy-amount: string,
+      fee-amount: string,
+      order-uid: string,
+    }
+
+    record settlement-interaction {
+      target: string,
+      value: string,
+      selector: string,
+    }
+
+    record order-owner-uid {
+      owner: string,
+      order-uid: string,
+    }
+
+    record pre-signature-event {
+      owner: string,
+      order-uid: string,
+      signed: bool,
+    }
+
+    variant settlement-event {
+      trade(settlement-trade),
+      interaction(settlement-interaction),
+      settlement(string),
+      order-invalidated(order-owner-uid),
+      pre-signature(pre-signature-event),
+    }
+
+    record eth-flow-placement {
+      sender: string,
+      order-json: string,
+      signing-scheme: string,
+      signature: string,
+      data: string,
+    }
+
+    record eth-flow-refund {
+      order-uid: string,
+      refunder: string,
+    }
+
+    variant eth-flow-event {
+      order-placement(eth-flow-placement),
+      order-invalidation(string),
+      order-refund(eth-flow-refund),
+    }
+
+    decode-settlement-log: func(log: event-log) -> result<settlement-event, string>;
+
+    decode-eth-flow-log: func(log: event-log) -> result<eth-flow-event, string>;
+  }
+}

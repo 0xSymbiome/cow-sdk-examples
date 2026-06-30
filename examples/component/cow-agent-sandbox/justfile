@@ -1,0 +1,35 @@
+# cow-agent-sandbox — compose a capability guard onto the published CoW client
+# and drive it from a capability-scoped host.
+
+client := "ghcr.io/0xsymbiome/cow-sdk-component-client-sync:0.1.0-alpha.9"
+
+# Prove the signature cap (offline, no funds).
+default: prove
+
+# Pull the pinned client component from GHCR.
+fetch:
+    mkdir -p vendor
+    wkg oci pull {{client}} --output vendor/client-sync.wasm
+
+# Build the capability guard to a component.
+build-guard:
+    cargo build --manifest-path guard/Cargo.toml --target wasm32-wasip2 --release
+
+# Plug the guard onto the published client — one self-contained artifact.
+compose: fetch build-guard
+    mkdir -p dist
+    wac plug --plug guard/target/wasm32-wasip2/release/signer_guard.wasm vendor/client-sync.wasm -o dist/cow-trader-guarded.wasm
+    wasm-tools validate --features all dist/cow-trader-guarded.wasm
+
+# Show the composed-in cap deny the 4th signature before it reaches the key.
+prove: build-guard
+    cargo run --manifest-path host-rust/Cargo.toml -- prove-cap
+
+# Drive a live Sepolia quote through the composed artifact (and post when
+# COW_BOT_WRITE=yes). Needs a funded test key in .env.
+trade: compose
+    cargo run --manifest-path host-rust/Cargo.toml -- trade
+
+# Refresh the committed cow:protocol contract after a version bump.
+wit: fetch
+    wasm-tools component wit vendor/client-sync.wasm | awk '/^package cow:protocol/{p=1} /^package wasi:io/{p=0} p' > wit/cow-protocol.wit

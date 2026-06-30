@@ -1,8 +1,9 @@
 [workspace]
 members = ["xtask", "examples/native/trading-bot"]
 # Example crates join here as they land. The WASM/TS projects under examples/wasm/*
-# are standalone (own toolchains and lockfiles) and stay excluded from this workspace.
-exclude = ["examples/wasm"]
+# and the component hosts under examples/component/* are standalone (own toolchains
+# and lockfiles) and stay excluded from this workspace.
+exclude = ["examples/wasm", "examples/component"]
 resolver = "3"
 
 [workspace.package]

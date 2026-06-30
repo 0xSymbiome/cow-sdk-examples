@@ -1,0 +1,68 @@
+# Build and verify the component examples: reproduce the engine identity from
+# Rust and Node, and compose + prove the capability guard. The live Sepolia trade
+# in cow-agent-sandbox needs funds and stays out of CI.
+name: component-examples
+
+on:
+  pull_request:
+    branches: [main, dev]
+    paths:
+      - "examples/component/**"
+      - ".github/workflows/component-examples.yml"
+  push:
+    branches: [main, dev]
+    paths:
+      - "examples/component/**"
+      - ".github/workflows/component-examples.yml"
+
+permissions:
+  contents: read
+
+env:
+  CARGO_TERM_COLOR: always
+  RUST_CI_TOOLCHAIN: 1.94.1
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  component-examples:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      # Source ref: actions/checkout@v7
+      - uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0
+        with:
+          persist-credentials: false
+      # Source ref: dtolnay/rust-toolchain@stable
+      - uses: dtolnay/rust-toolchain@29eef336d9b2848a0b548edc03f92a220660cdb8
+        with:
+          toolchain: ${{ env.RUST_CI_TOOLCHAIN }}
+          targets: wasm32-wasip2
+      # Source ref: Swatinem/rust-cache@v2
+      - uses: Swatinem/rust-cache@42dc69e1aa15d09112580998cf2ef0119e2e91ae
+      # Source ref: taiki-e/install-action@v2
+      - uses: taiki-e/install-action@94cb46f8d6e437890146ffbd78a778b78e623fb2
+        with:
+          tool: wasm-tools,just
+      - name: Install component tooling
+        run: cargo install wac-cli wkg
+      # Source ref: pnpm/action-setup@v6
+      - uses: pnpm/action-setup@0ebf47130e4866e96fce0953f49152a61190b271
+        with:
+          version: 11.7.0
+      # Source ref: actions/setup-node@v6
+      - uses: actions/setup-node@48b55a011bda9f5d6aeb4c2d9c7362e8dae4041e
+        with:
+          node-version: 22
+          cache: pnpm
+          cache-dependency-path: examples/component/cow-engine-verify/pnpm-lock.yaml
+      - name: cow-engine-verify — reproduce the order identity from Rust and Node
+        working-directory: examples/component/cow-engine-verify
+        run: just
+      - name: cow-agent-sandbox — compose, validate, and prove the signature cap
+        working-directory: examples/component/cow-agent-sandbox
+        run: |
+          just compose
+          just prove

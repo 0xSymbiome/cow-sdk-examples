@@ -1,0 +1,24 @@
+# Detached from the repository workspace: this host links Wasmtime and is built
+# on demand by the example's justfile, not by the workspace `cargo` lanes.
+[workspace]
+
+[package]
+name = "cow-agent-sandbox-host"
+version = "0.1.0"
+edition = "2024"
+publish = false
+
+[[bin]]
+name = "sandbox"
+path = "src/main.rs"
+
+[dependencies]
+wasmtime = "45"
+wasmtime-wasi = "45"
+wasmtime-wasi-http = "45"
+tokio = { version = "1", features = ["macros", "rt-multi-thread"] }
+k256 = { version = "0.13", features = ["ecdsa"] }
+tiny-keccak = { version = "2", features = ["keccak"] }
+hex = "0.4"
+dotenvy = "0.15"
+anyhow = "1"

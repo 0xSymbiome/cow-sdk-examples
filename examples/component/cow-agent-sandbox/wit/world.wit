@@ -1,0 +1,16 @@
+package cow:host@0.1.0;
+
+// The client-sync world as the host binds it: the cow:protocol imports it
+// satisfies (the signer and contract-read capabilities, plus the shared type
+// interfaces) and the exports it drives. Standard WASI is added to the linker
+// separately, so it does not appear here.
+world client-sync {
+  import cow:protocol/signer@0.1.0;
+  import cow:protocol/contract-read@0.1.0;
+  import cow:protocol/order@0.1.0;
+  import cow:protocol/book@0.1.0;
+  import cow:protocol/trade@0.1.0;
+  export cow:protocol/orderbook-read@0.1.0;
+  export cow:protocol/orderbook-write@0.1.0;
+  export cow:protocol/trading@0.1.0;
+}

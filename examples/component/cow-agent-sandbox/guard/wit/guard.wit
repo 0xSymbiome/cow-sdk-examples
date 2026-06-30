@@ -1,0 +1,14 @@
+package cow:protocol@0.1.0;
+
+// Structurally identical to the published client-sync's `cow:protocol/signer`
+// import, so `wac plug` connects this guard's export to that import.
+interface signer {
+    sign-digest: func(digest: list<u8>) -> result<list<u8>, string>;
+}
+
+// The guard is transparent middleware: it imports the raw signer (host-provided
+// after composition) and re-exports a guarded signer the client consumes.
+world signer-guard {
+    import signer;
+    export signer;
+}

@@ -1,0 +1,25 @@
+# cow-engine-verify — reproduce a CoW order identity from the published engine
+# component in two language hosts and assert it matches the committed golden.
+
+engine := "ghcr.io/0xsymbiome/cow-sdk-component-engine:0.1.0-alpha.9"
+
+# Verify from both hosts.
+default: verify-rust verify-node
+
+# Pull the pinned engine component from GHCR.
+fetch:
+    mkdir -p vendor
+    wkg oci pull {{engine}} --output vendor/engine.wasm
+
+# Reproduce the identity from a native Rust + Wasmtime host.
+verify-rust: fetch
+    cargo run --manifest-path host-rust/Cargo.toml
+
+# Reproduce it from Node via jco — the same artifact, the same bytes.
+verify-node: fetch
+    pnpm install
+    pnpm test
+
+# Refresh the committed contract after a version bump.
+wit: fetch
+    wasm-tools component wit vendor/engine.wasm > wit/engine.wit

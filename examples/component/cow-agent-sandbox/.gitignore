@@ -1,0 +1,3 @@
+# OCI artifacts pulled by `just fetch`, and the composed output — reproducible, never committed.
+vendor/
+dist/

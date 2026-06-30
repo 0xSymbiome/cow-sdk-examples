@@ -1,0 +1,18 @@
+{
+  "name": "cow-engine-verify-node",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "packageManager": "pnpm@11.7.0",
+  "engines": {
+    "node": ">=22"
+  },
+  "scripts": {
+    "build": "jco transpile vendor/engine.wasm -o dist --name engine",
+    "test": "jco transpile vendor/engine.wasm -o dist --name engine && node verify.mjs"
+  },
+  "devDependencies": {
+    "@bytecodealliance/jco": "1.24.3",
+    "@bytecodealliance/preview2-shim": "0.17.9"
+  }
+}

@@ -1,0 +1,293 @@
+package cow:protocol@0.1.0 {
+  interface signer {
+    sign-digest: func(digest: list<u8>) -> result<list<u8>, string>;
+  }
+  interface contract-read {
+    record contract-call {
+      address: string,
+      method: string,
+      abi-json: string,
+      args-json: string,
+    }
+
+    read-contract: func(call: contract-call) -> result<string, string>;
+  }
+  interface order {
+    enum order-kind {
+      buy,
+      sell,
+    }
+
+    enum sell-token-source {
+      erc20,
+      external,
+      internal,
+    }
+
+    enum buy-token-destination {
+      erc20,
+      internal,
+    }
+
+    enum signing-scheme {
+      eip712,
+      ethsign,
+      eip1271,
+      presign,
+    }
+
+    enum order-class {
+      market,
+      limit,
+      liquidity,
+    }
+
+    enum order-status {
+      presignature-pending,
+      open,
+      fulfilled,
+      cancelled,
+      expired,
+    }
+
+    enum cow-env {
+      prod,
+      staging,
+    }
+  }
+  interface book {
+    use order.{order-kind, sell-token-source, buy-token-destination, signing-scheme, order-class, order-status};
+
+    record ethflow-data {
+      refund-tx-hash: option<string>,
+      user-valid-to: u32,
+    }
+
+    record onchain-order-data {
+      sender: string,
+      placement-error: option<string>,
+    }
+
+    record stored-order-quote {
+      gas-amount: string,
+      gas-price: string,
+      sell-token-price: string,
+      sell-amount: string,
+      buy-amount: string,
+      fee-amount: string,
+      solver: string,
+      verified: bool,
+      metadata: option<string>,
+    }
+
+    record interaction-data {
+      target: string,
+      value: string,
+      call-data: string,
+    }
+
+    record order-interactions {
+      pre: option<list<interaction-data>>,
+      post: option<list<interaction-data>>,
+    }
+
+    record order {
+      sell-token: string,
+      buy-token: string,
+      receiver: option<string>,
+      sell-amount: string,
+      buy-amount: string,
+      valid-to: u32,
+      app-data: string,
+      app-data-hash: option<string>,
+      fee-amount: string,
+      full-balance-check: option<bool>,
+      kind: order-kind,
+      partially-fillable: bool,
+      sell-token-balance: option<sell-token-source>,
+      buy-token-balance: option<buy-token-destination>,
+      signing-scheme: signing-scheme,
+      signature: string,
+      %from: option<string>,
+      quote-id: option<s64>,
+      class: order-class,
+      owner: string,
+      uid: string,
+      creation-date: string,
+      executed-sell-amount: string,
+      executed-sell-amount-before-fees: string,
+      executed-buy-amount: string,
+      executed-fee: option<string>,
+      executed-fee-amount: option<string>,
+      executed-fee-token: option<string>,
+      invalidated: option<bool>,
+      status: order-status,
+      is-liquidity-order: option<bool>,
+      onchain-user: option<string>,
+      ethflow-data: option<ethflow-data>,
+      onchain-order-data: option<onchain-order-data>,
+      full-app-data: option<string>,
+      settlement-contract: string,
+      quote: option<stored-order-quote>,
+      interactions: option<order-interactions>,
+      total-fee: option<string>,
+    }
+
+    record executed-protocol-fee {
+      policy: option<string>,
+      amount: option<string>,
+      token: option<string>,
+    }
+
+    record trade {
+      block-number: u64,
+      log-index: u64,
+      order-uid: string,
+      owner: string,
+      sell-token: string,
+      buy-token: string,
+      sell-amount: string,
+      sell-amount-before-fees: string,
+      buy-amount: string,
+      executed-protocol-fees: option<list<executed-protocol-fee>>,
+      tx-hash: string,
+    }
+  }
+  interface trade {
+    use order.{order-kind, cow-env, sell-token-source, buy-token-destination};
+
+    record partner-fee-policy {
+      volume-bps: option<u16>,
+      surplus-bps: option<u16>,
+      price-improvement-bps: option<u16>,
+      max-volume-bps: option<u16>,
+      recipient: string,
+    }
+
+    record partner-fee {
+      policies: list<partner-fee-policy>,
+    }
+
+    record swap-request {
+      chain-id: u64,
+      owner: string,
+      sell-token: string,
+      buy-token: string,
+      amount: string,
+      app-code: string,
+      kind: option<order-kind>,
+      slippage-bps: option<u32>,
+      env: option<cow-env>,
+      receiver: option<string>,
+      valid-to: option<u32>,
+      valid-for: option<u32>,
+      partially-fillable: option<bool>,
+      sell-token-balance: option<sell-token-source>,
+      buy-token-balance: option<buy-token-destination>,
+      settlement-contract-override: option<list<tuple<u64, string>>>,
+      eth-flow-contract-override: option<list<tuple<u64, string>>>,
+      partner-fee: option<partner-fee>,
+    }
+  }
+  interface orderbook-read {
+    use book.{order, trade};
+
+    enum error-class {
+      validation,
+      rate-limited,
+      remote,
+      transport,
+      cancelled,
+      signing,
+      internal,
+    }
+
+    record query-error {
+      class: error-class,
+      message: string,
+      retryable: bool,
+      retry-after-ms: option<u32>,
+      error-type: option<string>,
+    }
+
+    record pagination {
+      offset: option<u32>,
+      limit: option<u32>,
+    }
+
+    get-order: func(chain-id: u64, uid: string, env: option<string>) -> result<order, query-error>;
+
+    get-orders: func(chain-id: u64, owner: string, page: option<pagination>, env: option<string>) -> result<list<order>, query-error>;
+
+    get-tx-orders: func(chain-id: u64, tx-hash: string, env: option<string>) -> result<list<order>, query-error>;
+
+    get-trades-by-owner: func(chain-id: u64, owner: string, page: option<pagination>, env: option<string>) -> result<list<trade>, query-error>;
+
+    get-trades-by-order: func(chain-id: u64, order-uid: string, page: option<pagination>, env: option<string>) -> result<list<trade>, query-error>;
+
+    get-quote: func(chain-id: u64, request-json: string, env: option<string>) -> result<string, query-error>;
+
+    get-native-price: func(chain-id: u64, token: string, env: option<string>) -> result<f64, query-error>;
+
+    get-total-surplus: func(chain-id: u64, owner: string, env: option<string>) -> result<string, query-error>;
+
+    get-order-competition-status: func(chain-id: u64, uid: string, env: option<string>) -> result<string, query-error>;
+
+    get-solver-competition: func(chain-id: u64, auction-id: s64, env: option<string>) -> result<string, query-error>;
+
+    get-solver-competition-by-tx: func(chain-id: u64, tx-hash: string, env: option<string>) -> result<string, query-error>;
+
+    get-app-data: func(chain-id: u64, app-data-hash: string, env: option<string>) -> result<string, query-error>;
+
+    version: func(chain-id: u64, env: option<string>) -> result<string, query-error>;
+
+    order-link: func(chain-id: u64, uid: string, env: option<string>) -> result<string, query-error>;
+  }
+  interface orderbook-write {
+    use orderbook-read.{query-error};
+
+    send-order: func(chain-id: u64, order-json: string, env: option<string>) -> result<string, query-error>;
+
+    send-cancellations: func(chain-id: u64, cancellations-json: string, env: option<string>) -> result<_, query-error>;
+
+    upload-app-data: func(chain-id: u64, app-data-hash: string, full-app-data: string, env: option<string>) -> result<_, query-error>;
+  }
+  interface trading {
+    use order.{order-kind, cow-env, sell-token-source, buy-token-destination};
+    use trade.{swap-request, partner-fee};
+    use orderbook-read.{query-error};
+
+    record limit-request {
+      chain-id: u64,
+      owner: string,
+      sell-token: string,
+      buy-token: string,
+      sell-amount: string,
+      buy-amount: string,
+      app-code: string,
+      kind: option<order-kind>,
+      env: option<cow-env>,
+      receiver: option<string>,
+      valid-to: option<u32>,
+      valid-for: option<u32>,
+      partially-fillable: option<bool>,
+      sell-token-balance: option<sell-token-source>,
+      buy-token-balance: option<buy-token-destination>,
+      settlement-contract-override: option<list<tuple<u64, string>>>,
+      eth-flow-contract-override: option<list<tuple<u64, string>>>,
+      slippage-bps: option<u32>,
+      partner-fee: option<partner-fee>,
+      quote-id: option<s64>,
+    }
+
+    swap: func(request: swap-request) -> result<string, query-error>;
+
+    quote: func(request: swap-request) -> result<string, query-error>;
+
+    post-swap-from-quote: func(quote-json: string) -> result<string, query-error>;
+
+    post-limit: func(request: limit-request) -> result<string, query-error>;
+
+    cow-allowance: func(chain-id: u64, owner: string, token: string, env: option<string>) -> result<string, query-error>;
+  }
+}

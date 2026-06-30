@@ -1,0 +1,18 @@
+{
+  "_comment": "A fixed order and its expected identity. Both the Rust and Node hosts compute the identity from the published engine and assert it equals these values, byte for byte.",
+  "chainId": 11155111,
+  "owner": "0xf39Fd6e51aad88F6F4ce6aB8827279cffFb92266",
+  "order": {
+    "sellToken": "0xfff9976782d46cc05630d1f6ebab18b2324d6b14",
+    "buyToken": "0x0625afb445c3b6b7b929342a04a22599fd5dbb59",
+    "sellAmount": "1000000000000000000",
+    "buyAmount": "500000000000000000000",
+    "validTo": 2000000000,
+    "appData": "0x0000000000000000000000000000000000000000000000000000000000000000",
+    "kind": "sell"
+  },
+  "expected": {
+    "uid": "0x600f1a523cd513a4927a2ae64483f40f363487677b56ab01b40d39411096dc79f39fd6e51aad88f6f4ce6ab8827279cfffb9226677359400",
+    "digest": "0x600f1a523cd513a4927a2ae64483f40f363487677b56ab01b40d39411096dc79"
+  }
+}

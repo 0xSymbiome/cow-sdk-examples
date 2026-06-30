@@ -1,0 +1,4 @@
+# OCI artifacts pulled by `just fetch` — reproducible from the pinned tag, never committed.
+vendor/
+# jco transpile output.
+dist/

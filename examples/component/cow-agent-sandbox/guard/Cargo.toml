@@ -1,0 +1,21 @@
+# A capability guard compiled to a WebAssembly component. It imports the raw
+# cow:protocol/signer (host-provided) and exports a guarded cow:protocol/signer
+# that the published client consumes after `wac plug`. Built to wasm32-wasip2.
+[workspace]
+
+[package]
+name = "signer-guard"
+version = "0.1.0"
+edition = "2021"
+publish = false
+
+[lib]
+crate-type = ["cdylib"]
+
+[dependencies]
+wit-bindgen = "0.58"
+
+[profile.release]
+opt-level = "s"
+strip = true
+lto = true
