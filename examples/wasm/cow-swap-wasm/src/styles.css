@@ -1531,6 +1531,12 @@ body {
   .chain-select {
     padding: 12px 12px;
   }
+  /* The header network menu right-aligns on desktop; on a narrow screen the switcher
+     wraps to the left, so left-align its menu to keep it fully on-screen. */
+  .header-actions .select-menu {
+    left: 0;
+    right: auto;
+  }
   .account-pill {
     padding: 11px 14px;
   }

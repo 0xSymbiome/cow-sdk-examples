@@ -92,12 +92,14 @@ export function Header() {
               label: `${meta.label}${meta.testnet ? ' (testnet)' : ''}`,
             }))}
             onChange={(value) => {
-              void switchChain(Number(value)).catch((error: unknown) => {
-                if ((error as { code?: number }).code === 4001) return
+              const target = Number(value)
+              void switchChain(target).catch((error: unknown) => {
+                if ((error as { code?: number }).code === 4001) return // user rejected the switch
+                const label = chainMeta(target)?.label ?? 'the selected network'
                 toast.push({
-                  tone: 'danger',
-                  title: 'Could not switch network',
-                  detail: 'Your wallet declined or failed the network switch.',
+                  tone: 'info',
+                  title: 'Switch network in your wallet',
+                  detail: `Couldn't switch from the page — change to ${label} in your wallet. Some mobile wallets don't sync the switch back.`,
                 })
               })
             }}
