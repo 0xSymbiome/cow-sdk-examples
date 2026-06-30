@@ -1,7 +1,7 @@
 # cow-engine-verify — reproduce a CoW order identity from the published engine
 # component in two language hosts and assert it matches the committed golden.
 
-engine := "ghcr.io/0xsymbiome/cow-sdk-component-engine:0.1.0-alpha.9"
+engine := "ghcr.io/0xsymbiome/cow-sdk-component-engine:0.1.0-alpha.10"
 
 # Verify from both hosts.
 default: verify-rust verify-node

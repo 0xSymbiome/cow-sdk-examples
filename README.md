@@ -24,7 +24,7 @@ you read is what you get:
 ```text
 cargo add cow-sdk
 npm install @symbiome-forge/cow-sdk-wasm@alpha
-wkg oci pull ghcr.io/0xsymbiome/cow-sdk-component-engine:0.1.0-alpha.9
+wkg oci pull ghcr.io/0xsymbiome/cow-sdk-component-engine:0.1.0-alpha.10
 ```
 
 ## The catalog

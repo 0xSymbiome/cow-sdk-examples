@@ -100,9 +100,15 @@ export function Header() {
         ) : null}
 
         {account === undefined ? (
-          <Button onClick={() => setPicking(true)} loading={connecting}>
-            Connect wallet
-          </Button>
+          connecting ? (
+            // A reconnect (e.g. resuming a WalletConnect session after a mobile network
+            // switch) is in flight — show progress rather than a disconnected CTA.
+            <Button loading disabled>
+              Connecting…
+            </Button>
+          ) : (
+            <Button onClick={() => setPicking(true)}>Connect wallet</Button>
+          )
         ) : (
           <div className="account" ref={menuRef}>
             <button

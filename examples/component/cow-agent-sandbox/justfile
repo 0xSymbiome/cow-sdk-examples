@@ -1,7 +1,7 @@
 # cow-agent-sandbox — compose a capability guard onto the published CoW client
 # and drive it from a capability-scoped host.
 
-client := "ghcr.io/0xsymbiome/cow-sdk-component-client-sync:0.1.0-alpha.9"
+client := "ghcr.io/0xsymbiome/cow-sdk-component-client-sync:0.1.0-alpha.10"
 
 # Prove the signature cap (offline, no funds).
 default: prove

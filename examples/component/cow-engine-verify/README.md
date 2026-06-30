@@ -45,5 +45,5 @@ Both hosts print the UID and digest and assert they equal `golden.json`.
 
 ## Notes
 
-- The pinned tag `0.1.0-alpha.9` keeps the build reproducible; bump it and run
+- The pinned tag `0.1.0-alpha.10` keeps the build reproducible; bump it and run
   `just wit` to refresh the committed contract.

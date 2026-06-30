@@ -1,4 +1,4 @@
-import { createContext, use, useCallback, type ReactNode } from 'react'
+import { createContext, use, useCallback, useEffect, type ReactNode } from 'react'
 import type { Address, PublicClient, WalletClient } from 'viem'
 import {
   WagmiProvider,
@@ -6,6 +6,7 @@ import {
   useConnect,
   useDisconnect,
   usePublicClient,
+  useReconnect,
   useSwitchChain,
   useWalletClient,
   type Connector,
@@ -36,9 +37,39 @@ const WalletContext = createContext<WalletContextValue | null>(null)
 export function WalletProvider({ children }: { children: ReactNode }) {
   return (
     <WagmiProvider config={wagmiConfig}>
+      <WalletUpdater />
       <WalletBridge>{children}</WalletBridge>
     </WagmiProvider>
   )
+}
+
+// Re-establishes a dropped connector when the tab returns to the foreground. On mobile,
+// switching network deep-links to the wallet app, which backgrounds the tab and suspends
+// the WalletConnect relay socket; on return the page resumes without a remount, so
+// wagmi's mount-time reconnect never re-fires. Reconnecting on visibility/online/focus —
+// only while disconnected — restores the session without disturbing a live connection.
+function WalletUpdater() {
+  const { status } = useAccount()
+  const { reconnect } = useReconnect()
+
+  useEffect(() => {
+    const tryReconnect = () => {
+      if (status === 'disconnected') reconnect()
+    }
+    const onVisible = () => {
+      if (document.visibilityState === 'visible') tryReconnect()
+    }
+    document.addEventListener('visibilitychange', onVisible)
+    window.addEventListener('online', tryReconnect)
+    window.addEventListener('focus', tryReconnect)
+    return () => {
+      document.removeEventListener('visibilitychange', onVisible)
+      window.removeEventListener('online', tryReconnect)
+      window.removeEventListener('focus', tryReconnect)
+    }
+  }, [status, reconnect])
+
+  return null
 }
 
 function WalletBridge({ children }: { children: ReactNode }) {

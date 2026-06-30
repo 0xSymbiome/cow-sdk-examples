@@ -68,5 +68,5 @@ declared surface.
 
 ## Notes
 
-- The pinned tag `0.1.0-alpha.9` keeps the build reproducible; `just wit`
+- The pinned tag `0.1.0-alpha.10` keeps the build reproducible; `just wit`
   refreshes the committed contract after a version bump.
