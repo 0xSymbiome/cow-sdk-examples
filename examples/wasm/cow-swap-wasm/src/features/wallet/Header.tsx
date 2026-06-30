@@ -6,7 +6,7 @@ import { Button } from '../../ui/primitives'
 import { Modal } from '../../ui/Modal'
 import { Select } from '../../ui/Select'
 import { useToast } from '../../ui/toast'
-import { walletOptions } from '../../wallet/connector-list'
+import { connectorIcon, orderConnectors } from '../../wallet/connector-list'
 import { useWallet } from '../../wallet/WalletProvider'
 
 function short(address: string): string {
@@ -14,18 +14,8 @@ function short(address: string): string {
 }
 
 export function Header() {
-  const {
-    account,
-    chainId,
-    connectors,
-    connect,
-    connectWalletConnect,
-    connectCoinbase,
-    disconnect,
-    switchChain,
-    walletName,
-    connecting,
-  } = useWallet()
+  const { account, chainId, connectors, connect, disconnect, switchChain, walletName, connecting } =
+    useWallet()
   const toast = useToast()
   const [picking, setPicking] = useState(false)
   const [menuOpen, setMenuOpen] = useState(false)
@@ -33,7 +23,7 @@ export function Header() {
   const menuRef = useRef<HTMLDivElement>(null)
   const chains = supportedChains()
   const knownChain = chainId !== undefined && chainMeta(chainId) !== undefined
-  const options = walletOptions(connectors, connect, connectWalletConnect, connectCoinbase)
+  const walletOptions = orderConnectors(connectors)
 
   // Close the account menu on an outside click or Escape.
   useEffect(() => {
@@ -169,20 +159,23 @@ export function Header() {
           WalletConnect.
         </p>
         <ul className="wallet-list">
-          {options.map((option) => (
-            <li key={option.id}>
-              <button
-                type="button"
-                onClick={() => {
-                  option.onSelect()
-                  setPicking(false)
-                }}
-              >
-                {option.icon ? <img src={option.icon} width={24} height={24} alt="" /> : null}
-                {option.name}
-              </button>
-            </li>
-          ))}
+          {walletOptions.map((target) => {
+            const icon = connectorIcon(target)
+            return (
+              <li key={target.uid}>
+                <button
+                  type="button"
+                  onClick={() => {
+                    connect(target)
+                    setPicking(false)
+                  }}
+                >
+                  {icon ? <img src={icon} width={24} height={24} alt="" /> : null}
+                  {target.name}
+                </button>
+              </li>
+            )
+          })}
         </ul>
       </Modal>
     </header>

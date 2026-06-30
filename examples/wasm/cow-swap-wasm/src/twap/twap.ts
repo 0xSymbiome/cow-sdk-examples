@@ -10,13 +10,17 @@ import {
   buildAppData,
   buildTwapCreateTransaction,
   domainSeparator,
-  type TransactionRequest,
 } from '@symbiome-forge/cow-sdk-wasm/trading'
 
 import { APP_CODE } from '../config'
 import { ensureCowReady, getOrderBookClient, getTradingClient } from '../lib/cow'
 import { contractReader } from '../lib/cow-callbacks'
+import { isSmartContractWallet, sendCallsThroughSafe, toSafeCall, type SafeCall } from '../lib/safe-tx'
 import { MAX_UINT256 } from '../features/swap/settings'
+
+// Re-export the Safe-wallet predicate from its shared home so existing
+// `import { isSmartContractWallet } from '../twap/twap'` call sites keep working.
+export { isSmartContractWallet }
 
 // ComposableCoW and the ExtensibleFallbackHandler are CREATE2 singletons,
 // deployed at the same address on every supported chain.
@@ -25,29 +29,6 @@ const EXTENSIBLE_FALLBACK_HANDLER = '0x2f55e8b20D0B9FEFA187AA7d00B6Cbe563605bF5'
 // The Safe fallback-handler storage slot: keccak256("fallback_manager.handler.address").
 const FALLBACK_HANDLER_SLOT =
   '0x6c9a6c4a39284e37ed1cf53d337577d14212a4870fb976a4366c693b939918d5' as Hex
-
-/**
- * Whether `account` is a smart-contract wallet (a Safe), not an EOA. TWAP /
- * composable orders are EIP-1271 authenticated, so the owner must be a contract.
- * This is the predicate the TWAP form is gated on.
- */
-export async function isSmartContractWallet(
-  publicClient: PublicClient,
-  account: Address,
-): Promise<boolean> {
-  const code = await publicClient.getBytecode({ address: account })
-  return code !== undefined && code !== '0x'
-}
-
-interface MetaTx {
-  to: string
-  value: string
-  data: string
-}
-
-function toMetaTx(tx: TransactionRequest): MetaTx {
-  return { to: tx.to as string, value: (tx.value ?? '0') as string, data: (tx.data ?? '0x') as string }
-}
 
 export interface CreateTwapInput {
   walletClient: WalletClient
@@ -113,14 +94,14 @@ export async function createTwapOrder(input: CreateTwapInput): Promise<TwapResul
     ...(input.receiver ? { receiver: input.receiver } : {}),
   }).value
 
-  const txs: MetaTx[] = []
+  const calls: SafeCall[] = []
 
   // 1. One-time Safe setup: install the ExtensibleFallbackHandler and point the
   //    CoW domain verifier at ComposableCoW so the watch tower's EIP-1271
   //    signatures validate. Skipped when the Safe is already composable-ready.
   if (!(await isComposableReady(publicClient, account))) {
     const domainSep = domainSeparator(chainId).value
-    txs.push(setFallbackHandlerTx(account), setDomainVerifierTx(account, domainSep))
+    calls.push(setFallbackHandlerCall(account), setDomainVerifierCall(account, domainSep))
   }
 
   // 2. Approval: let the protocol pull the sell token across the parts.
@@ -133,40 +114,17 @@ export async function createTwapOrder(input: CreateTwapInput): Promise<TwapResul
   ).value
   if (BigInt(allowance) < BigInt(sellTotal)) {
     const approve = (await trading.buildApprovalTx({ tokenAddress: input.sellToken, amount: MAX_UINT256 })).value
-    txs.push(toMetaTx(approve))
+    calls.push(toSafeCall(approve))
   }
 
   // 3. The conditional-order authorization itself.
-  txs.push(toMetaTx(built.transaction))
+  calls.push(toSafeCall(built.transaction))
 
   // Submit as one atomic EIP-5792 batch (`wallet_sendCalls`): the optional setup
   // and approval land with the create in a single Safe confirmation. Wallets
-  // without EIP-5792 fall back to sequential transactions.
-  const calls = txs.map((tx) => ({
-    to: tx.to as Address,
-    data: tx.data as Hex,
-    value: BigInt(tx.value),
-  }))
-
-  try {
-    const sent: { id: string } | string = await walletClient.sendCalls({ account, calls })
-    return { orderId: built.orderId, txHash: typeof sent === 'string' ? sent : sent.id }
-  } catch (error) {
-    if (!isBatchingUnsupported(error)) throw error
-    let txHash = ''
-    for (const call of calls) {
-      txHash = await walletClient.sendTransaction({ account, chain: null, ...call })
-    }
-    return { orderId: built.orderId, txHash }
-  }
-}
-
-// EIP-5792 is optional; detect a wallet that doesn't implement `wallet_sendCalls`
-// so we fall back to sequential sends rather than surfacing it as a real failure.
-function isBatchingUnsupported(error: unknown): boolean {
-  const e = error as { code?: number; message?: string }
-  if (e.code === 4200 || e.code === -32601) return true
-  return /unsupported|not support|method .*not |does not exist|sendcalls/i.test(e.message ?? '')
+  // without EIP-5792 fall back to sequential transactions (shared Safe helper).
+  const txHash = await sendCallsThroughSafe(walletClient, account, calls)
+  return { orderId: built.orderId, txHash }
 }
 
 function randomSalt(): Hex {
@@ -203,10 +161,10 @@ const SET_DOMAIN_VERIFIER_ABI = [
   },
 ] as const
 
-function setFallbackHandlerTx(safe: string): MetaTx {
+function setFallbackHandlerCall(safe: Address): SafeCall {
   return {
     to: safe,
-    value: '0',
+    value: 0n,
     data: encodeFunctionData({
       abi: SET_FALLBACK_HANDLER_ABI,
       functionName: 'setFallbackHandler',
@@ -215,10 +173,10 @@ function setFallbackHandlerTx(safe: string): MetaTx {
   }
 }
 
-function setDomainVerifierTx(safe: string, domainSep: string): MetaTx {
+function setDomainVerifierCall(safe: Address, domainSep: string): SafeCall {
   return {
     to: safe,
-    value: '0',
+    value: 0n,
     data: encodeFunctionData({
       abi: SET_DOMAIN_VERIFIER_ABI,
       functionName: 'setDomainVerifier',

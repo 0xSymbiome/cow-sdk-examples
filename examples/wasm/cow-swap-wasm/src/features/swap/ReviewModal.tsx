@@ -10,7 +10,7 @@ import { TokenLogo } from '../../ui/TokenLogo'
 import { useToast } from '../../ui/toast'
 import type { TokenInfo } from '../../tokens/tokens'
 import { manualSlippageBps, resolvedReceiver, validForSeconds, type SwapSettings } from './settings'
-import { useNeedsApproval, useTradeExecutor, type TradeStep } from './useSwap'
+import { useNeedsApproval, useTradeExecutor, type PostedOrder, type TradeStep } from './useSwap'
 
 interface ReviewModalProps {
   mode: 'market' | 'limit'
@@ -35,6 +35,10 @@ function stepLabel(step: TradeStep, sellSymbol: string): string {
       return 'Step 2 of 2 — sign the order in your wallet. If no prompt appeared, open your wallet: the request may be waiting there.'
     case 'submitting':
       return 'Submitting your order…'
+    case 'activating':
+      // Safe pre-sign: the order is posted; confirm the activation batch (approve +
+      // set pre-signature) in your Safe to make it fillable.
+      return 'Confirm the activation in your Safe — approve the sell token and set the pre-signature. The order becomes fillable once it mines.'
     default:
       return ''
   }
@@ -117,12 +121,24 @@ export function ReviewModal({
     toast.push({ tone: ui.userRejected ? 'info' : 'danger', title: ui.title, detail: ui.detail })
   }
 
-  function onSuccess() {
-    toast.push({
-      tone: 'success',
-      title: mode === 'market' ? 'Order submitted' : 'Limit order placed',
-      detail: 'Track it in the activity panel.',
-    })
+  function onSuccess(posted: PostedOrder) {
+    // A Safe pre-sign order is posted but only fillable once its activation tx mines,
+    // so it shows as pending/activating in the activity panel — say so rather than
+    // implying it is already live.
+    toast.push(
+      posted.pendingActivation
+        ? {
+            tone: 'success',
+            title: mode === 'market' ? 'Swap order activating' : 'Limit order activating',
+            detail:
+              'Your Safe is confirming the activation. It becomes fillable once that mines — track it in the activity panel.',
+          }
+        : {
+            tone: 'success',
+            title: mode === 'market' ? 'Order submitted' : 'Limit order placed',
+            detail: 'Track it in the activity panel.',
+          },
+    )
     onDone()
   }
 

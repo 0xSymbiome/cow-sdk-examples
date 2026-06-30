@@ -5,6 +5,7 @@ import type { Address, Hex } from 'viem'
 import { withRetry } from '@symbiome-forge/cow-sdk-wasm/trading'
 import type {
   LimitTradeParams,
+  OrderPlacement,
   QuoteResults,
   TradeParams,
   TradingClient,
@@ -14,15 +15,48 @@ import type { PublicClient, WalletClient } from 'viem'
 import { QUOTE_REFRESH_INTERVAL_MS } from '../../config'
 import { getOrderBookClient, getTradingClient } from '../../lib/cow'
 import { contractReader, typedDataSigner } from '../../lib/cow-callbacks'
+import { isSmartContractWallet, sendCallsThroughSafe, toSafeCall } from '../../lib/safe-tx'
 import { recordQuote, recordRetry } from '../inspector/store'
 import { useWallet } from '../../wallet/WalletProvider'
 import { MAX_UINT256, type ApprovalChoice } from './settings'
 
-export type TradeStep = 'idle' | 'approving' | 'signing' | 'submitting'
+// 'activating' is the Safe pre-sign step: the order is already posted (it shows as
+// pre-signature-pending in the orderbook) while the approve+setPreSignature batch is
+// confirmed in the Safe.
+export type TradeStep = 'idle' | 'approving' | 'signing' | 'submitting' | 'activating'
 
 export interface PostedOrder {
   orderId: string
   txHash?: string
+  /**
+   * True for a Safe pre-sign order: the order is posted but only becomes fillable
+   * once its on-chain activation (sent here) mines, so it is pre-signature-pending
+   * rather than immediately live. The UI surfaces this as "activating", not an error.
+   */
+  pendingActivation?: boolean
+}
+
+/**
+ * Carry an `OrderPlacement` to its conclusion. A `live` placement (an EOA EIP-712
+ * order, or a smart-account EIP-1271 signature) is already fillable — return its id.
+ * A `pendingActivation` placement (a Safe pre-sign order) carries the on-chain
+ * approve-then-setPreSignature bundle; submit it through the Safe with the shared
+ * EIP-5792 batch + sequential fallback, then report it as pending activation.
+ *
+ * Exported for the deterministic Safe-branch test (no React, no network): it is the
+ * seam where a posted pre-sign placement turns into the Safe activation batch.
+ */
+export async function settlePlacement(
+  placement: OrderPlacement,
+  walletClient: WalletClient,
+  owner: Address,
+  setStep: (step: TradeStep) => void,
+): Promise<PostedOrder> {
+  if (placement.status === 'live') return { orderId: placement.orderId }
+  setStep('activating')
+  const calls = placement.activation.calls.map(toSafeCall)
+  const txHash = await sendCallsThroughSafe(walletClient, owner, calls)
+  return { orderId: placement.orderId, txHash, pendingActivation: true }
 }
 
 /**
@@ -174,7 +208,8 @@ export function useTradeExecutor() {
         if (native) {
           // Native-currency sell (eth-flow): submitted on-chain, with no ERC-20
           // approval and no off-chain signature. The SDK builds the transaction
-          // straight from the quote you already hold.
+          // straight from the quote you already hold. (Out of scope for the Safe
+          // pre-sign path — a Safe native sell keeps this behavior.)
           setStep('submitting')
           const built = (await trading.buildSellNativeCurrencyTxFromQuote(quote, owner)).value
           const tx = built.transaction
@@ -188,6 +223,19 @@ export function useTradeExecutor() {
           return { orderId: built.orderUid, txHash: hash }
         }
 
+        // Safe (smart-contract wallet), ERC-20 sell: pre-sign is the canonical path
+        // for a Safe — it never produces an off-chain order signature. `placeSwap`
+        // with the `presign` authorization posts the order; `settlePlacement` then
+        // sends the bundled approve+setPreSignature through the Safe, so no separate
+        // ERC-20 approval is done here.
+        if (await isSmartContractWallet(publicClient as PublicClient, owner)) {
+          setStep('submitting')
+          const placement = (await trading.placeSwap(quote, owner, { kind: 'presign' })).value
+          return settlePlacement(placement, wallet, owner, setStep)
+        }
+
+        // EOA: the working EIP-712 path — approve the sell token (gas-bounded), then
+        // sign and post the order gaslessly.
         await ensureApproved(
           trading,
           publicClient as PublicClient,
@@ -218,7 +266,19 @@ export function useTradeExecutor() {
     mutationFn: async ({ params, sellToken, approval }) => {
       if (!ready) throw new Error('Connect a wallet first')
       const trading = getTradingClient(chainId as number)
+      const owner = account as Address
+      const wallet = walletClient as WalletClient
       try {
+        // Safe (smart-contract wallet): pre-sign limit order, mirroring the swap
+        // path. `placeLimit` with the `presign` authorization posts the limit order;
+        // `settlePlacement` then sends the bundled approve+setPreSignature through the
+        // Safe, so no separate ERC-20 approval is done here.
+        if (await isSmartContractWallet(publicClient as PublicClient, owner)) {
+          setStep('submitting')
+          const placement = (await trading.placeLimit(params, owner, { kind: 'presign' })).value
+          return settlePlacement(placement, wallet, owner, setStep)
+        }
+
         await ensureApproved(
           trading,
           publicClient as PublicClient,
