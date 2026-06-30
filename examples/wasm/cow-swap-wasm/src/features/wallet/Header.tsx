@@ -7,7 +7,7 @@ import { Modal } from '../../ui/Modal'
 import { Select } from '../../ui/Select'
 import { useToast } from '../../ui/toast'
 import { connectorIcon, orderConnectors } from '../../wallet/connector-list'
-import { useWallet } from '../../wallet/WalletProvider'
+import { isWalletConnectChainNotApprovedError, useWallet } from '../../wallet/WalletProvider'
 
 function short(address: string): string {
   return `${address.slice(0, 6)}…${address.slice(-4)}`
@@ -84,7 +84,14 @@ export function Header() {
             onChange={(value) => {
               const target = Number(value)
               void switchChain(target).catch((error: unknown) => {
-                if ((error as { code?: number }).code === 4001) return // user rejected the switch
+                // A genuine wallet-side rejection (user declined the prompt) is silent. A
+                // WalletConnect session that hasn't approved the chain never prompts — we
+                // guide the user to switch in-wallet, which is the only safe option there.
+                if (
+                  !isWalletConnectChainNotApprovedError(error) &&
+                  (error as { code?: number }).code === 4001
+                )
+                  return
                 const label = chainMeta(target)?.label ?? 'the selected network'
                 toast.push({
                   tone: 'info',
