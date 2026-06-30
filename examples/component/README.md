@@ -19,12 +19,14 @@ with `wac`.
 Three components are published to GHCR under `0xsymbiome`, sharing one WIT package
 (`cow:protocol`):
 
-- `cow-sdk-component-engine` — pure order math, no host imports; runs in any
-  component host, including the browser.
-- `cow-sdk-component-client-sync` — the stateful client (orderbook reads and
-  writes, the trading lifecycle) over WASI 0.2; imports a host `signer`,
-  `contract-read`, and `wasi:http`.
-- `cow-sdk-component-client-async` — the same surface over WASI 0.3.
+- [`cow-sdk-component-engine`](https://github.com/orgs/0xSymbiome/packages/container/package/cow-sdk-component-engine)
+  — pure order math, no host imports; runs in any component host, including the
+  browser.
+- [`cow-sdk-component-client-sync`](https://github.com/orgs/0xSymbiome/packages/container/package/cow-sdk-component-client-sync)
+  — the stateful client (orderbook reads and writes, the trading lifecycle) over
+  WASI 0.2; imports a host `signer`, `contract-read`, and `wasi:http`.
+- [`cow-sdk-component-client-async`](https://github.com/orgs/0xSymbiome/packages/container/package/cow-sdk-component-client-async)
+  — the same surface over WASI 0.3; published, no runnable example yet.
 
 The client components run on native and server hosts (Wasmtime, Node), not in the
 browser; the engine runs anywhere.

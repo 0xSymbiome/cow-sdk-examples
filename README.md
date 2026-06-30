@@ -9,11 +9,13 @@ is a study in **how to build correctly** on the SDK, not just *that it works*.
 Three rules hold for everything in this repository, and CI enforces them — so what
 you read is what you get:
 
-- **Published artifacts only.** Every example depends on the released package,
-  [`cow-sdk`](https://crates.io/crates/cow-sdk) from crates.io or
+- **Published artifacts only.** Every example depends on a released artifact —
+  [`cow-sdk`](https://crates.io/crates/cow-sdk) from crates.io,
   [`@symbiome-forge/cow-sdk-wasm`](https://www.npmjs.com/package/@symbiome-forge/cow-sdk-wasm)
-  from npm, pinned with a committed lockfile. Nothing imports the SDK source tree,
-  so an example is exactly what a consumer gets — never a privileged build.
+  from npm, or one of the WebAssembly component packages from
+  [GHCR](https://github.com/orgs/0xSymbiome/packages) — pinned with a committed
+  lockfile or tag. Nothing imports the SDK source tree, so an example is exactly
+  what a consumer gets — never a privileged build.
 - **Every claim is runnable.** Each example carries its own typecheck/build/test
   gate and must pass it; a README never describes behavior the code doesn't have.
 - **The host owns its keys.** The WASM examples connect a real wallet and sign
@@ -22,6 +24,7 @@ you read is what you get:
 ```text
 cargo add cow-sdk
 npm install @symbiome-forge/cow-sdk-wasm@alpha
+wkg oci pull ghcr.io/0xsymbiome/cow-sdk-component-engine:0.1.0-alpha.9
 ```
 
 ## The catalog
@@ -35,8 +38,8 @@ instructions is in [`examples/`](examples/README.md).
 | [`cow-signer-node`](examples/wasm/cow-signer-node) | Node.js ≥ 22 | npm `…/signing` | Offline, deterministic EIP-712 + EIP-1271 order signing through a viem callback |
 | [`cow-gateway-cloudflare`](examples/wasm/cow-gateway-cloudflare) | Cloudflare Worker | npm `…/trading/edge` | An edge orderbook quote gateway with typed upstream error mapping |
 | [`trading-bot`](examples/native/trading-bot) | Native (Rust) | `cow-sdk` | A live reference trading bot: env-driven config, `tracing` telemetry, cooperative cancellation, typed errors |
-| [`cow-engine-verify`](examples/component/cow-engine-verify) | Native + Node | OCI components | Reproduce a CoW order identity from the pure engine component in two hosts, byte-identical to the native golden |
-| [`cow-agent-sandbox`](examples/component/cow-agent-sandbox) | Native (Rust) | OCI components | Compose a capability guard onto the published client and drive a live keys-out Sepolia trade from a capability-scoped host |
+| [`cow-engine-verify`](examples/component/cow-engine-verify) | Native + Node | [`cow-sdk-component-engine`](https://github.com/orgs/0xSymbiome/packages/container/package/cow-sdk-component-engine) | Reproduce a CoW order identity from the pure engine component in two hosts, byte-identical to the native golden |
+| [`cow-agent-sandbox`](examples/component/cow-agent-sandbox) | Native (Rust) | [`cow-sdk-component-client-sync`](https://github.com/orgs/0xSymbiome/packages/container/package/cow-sdk-component-client-sync) | Compose a capability guard onto the published client and drive a live keys-out Sepolia trade from a capability-scoped host |
 
 The flagship is **[`cow-swap-wasm`](examples/wasm/cow-swap-wasm)** — a hosted,
 fully client-side CoW swap interface where [viem](https://viem.sh) owns the
